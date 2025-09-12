@@ -67,7 +67,7 @@ export default function LiveSearch() {
   };
 
   return (
-    <Card className="w-full max-w-3xl mx-auto mt-12">
+    <Card className="max-w-3xl w-full mx-auto mt-12">
       <CardHeader>
         <CardTitle>Live Search</CardTitle>
       </CardHeader>

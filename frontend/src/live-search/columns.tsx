@@ -49,19 +49,28 @@ export const getColumns = (actions: ActionsProps): ColumnDef<TradeLink>[] => [
   {
     accessorKey: "league",
     header: "League",
+    cell: ({ row, getValue }) => (
+      <span
+        className="block max-w-[100px] overflow-hidden whitespace-nowrap text-ellipsis"
+        title={getValue() as string}
+      >
+        {getValue() as string}
+      </span>
+    ),
   },
   {
     accessorKey: "url",
     header: "URL",
     cell: ({ row, getValue }) =>
       actions.editIdx === row.index ? (
-        <Input
-          value={actions.editUrl}
-          onChange={(e) => actions.setEditUrl(e.target.value)}
-          className="max-w-xs"
-        />
+        <Input value={actions.editUrl} onChange={(e) => actions.setEditUrl(e.target.value)} />
       ) : (
-        <span className="truncate max-w-xs">{getValue() as string}</span>
+        <span
+          className="block max-w-[120px] overflow-hidden whitespace-nowrap text-ellipsis"
+          title={getValue() as string}
+        >
+          {getValue() as string}
+        </span>
       ),
   },
   {
@@ -72,10 +81,14 @@ export const getColumns = (actions: ActionsProps): ColumnDef<TradeLink>[] => [
         <Input
           value={actions.editDescription}
           onChange={(e) => actions.setEditDescription(e.target.value)}
-          className="max-w-xs"
         />
       ) : (
-        <span className="truncate max-w-xs">{getValue() as string}</span>
+        <span
+          className="block max-w-[100px] overflow-hidden whitespace-nowrap text-ellipsis"
+          title={getValue() as string}
+        >
+          {getValue() as string}
+        </span>
       ),
   },
   {

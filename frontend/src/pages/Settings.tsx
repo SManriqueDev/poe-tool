@@ -49,7 +49,7 @@ export default function Settings() {
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto mt-12">
+    <Card className="max-w-xl w-full mx-auto mt-12">
       <CardHeader>
         <CardTitle>Settings</CardTitle>
         <CardDescription>
