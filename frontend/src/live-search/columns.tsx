@@ -63,7 +63,11 @@ export const getColumns = (actions: ActionsProps): ColumnDef<TradeLink>[] => [
     header: "URL",
     cell: ({ row, getValue }) =>
       actions.editIdx === row.index ? (
-        <Input value={actions.editUrl} onChange={(e) => actions.setEditUrl(e.target.value)} />
+        <Input
+          className="min-w-[200px]"
+          value={actions.editUrl}
+          onChange={(e) => actions.setEditUrl(e.target.value)}
+        />
       ) : (
         <span
           className="block max-w-[120px] overflow-hidden whitespace-nowrap text-ellipsis"
@@ -79,6 +83,7 @@ export const getColumns = (actions: ActionsProps): ColumnDef<TradeLink>[] => [
     cell: ({ row, getValue }) =>
       actions.editIdx === row.index ? (
         <Input
+          className="min-w-[150px]"
           value={actions.editDescription}
           onChange={(e) => actions.setEditDescription(e.target.value)}
         />
