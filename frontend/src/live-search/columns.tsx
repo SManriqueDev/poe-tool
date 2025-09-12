@@ -109,20 +109,19 @@ export const getColumns = (actions: ActionsProps): ColumnDef<TradeLink>[] => [
           </Button>
         </>
       ) : (
-        <>
+        <div className="flex items-center gap-2">
           <Button size="sm" variant="secondary" onClick={() => actions.handleEdit(row.index)}>
             Edit
           </Button>
           <Button
             size="sm"
             variant="destructive"
-            className="ml-2"
             onClick={() => actions.handleDelete(row.index)}
             aria-label="Delete"
           >
             <Trash2 className="w-4 h-4" />
           </Button>
-        </>
+        </div>
       ),
   },
 ];
