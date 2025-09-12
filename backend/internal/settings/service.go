@@ -36,6 +36,7 @@ func NewService(appName string) (*Service, error) {
 			League:            "Standard",
 			AutomationEnabled: false,
 			Delay:             1000,
+			DefaultTradeLinks: []DefaultTradeLink{},
 		}
 		_ = s.Save()
 	}

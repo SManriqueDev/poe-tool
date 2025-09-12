@@ -25,6 +25,7 @@ func main() {
 		OnStartup:        app.Startup,
 		Bind: []interface{}{
 			app.SettingsHandler,
+			app.LiveSearchHandler,
 		},
 	})
 	if err != nil {

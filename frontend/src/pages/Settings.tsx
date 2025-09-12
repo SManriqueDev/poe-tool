@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { settings } from "../../wailsjs/go/models";
 import Config = settings.Config;
+import DefaultTradeLink = settings.DefaultTradeLink;
 
 export default function Settings() {
   const [poeSessid, setPoeSessid] = useState("");
@@ -22,6 +23,7 @@ export default function Settings() {
   const [league, setLeague] = useState("");
   const [automationEnabled, setAutomationEnabled] = useState(false);
   const [delay, setDelay] = useState(1000);
+  const [defaultTradeLinks, _] = useState<DefaultTradeLink[]>([]); // Placeholder for future use
 
   useEffect(() => {
     loadConfig().then((cfg: Config) => {
@@ -34,13 +36,15 @@ export default function Settings() {
   }, []);
 
   const handleSave = async () => {
-    await saveConfig({
+    const cfg = new settings.Config({
       poesessid: poeSessid,
       accountName,
       league,
       automationEnabled,
       delay,
+      defaultTradeLinks,
     });
+    await saveConfig(cfg);
     toast("Settings saved!");
   };
 

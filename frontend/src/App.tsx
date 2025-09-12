@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import type * as React from "react";
 import { Route, Routes } from "react-router";
 import Settings from "@/pages/Settings";
+import LiveSearch from "@/pages/LiveSearch";
 
 function App() {
   return (
@@ -15,7 +16,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Settings />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/search" element={<div>Search Page</div>} />
+            <Route path="/search" element={<LiveSearch />} />
             <Route path="*" element={<div>404 Not Found</div>} />
           </Routes>
         </Layout>
