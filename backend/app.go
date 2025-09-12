@@ -12,7 +12,7 @@ type App struct {
 }
 
 func NewApp() *App {
-	settingsService, _ := settings.NewService("poe-tool")
+	settingsService, _ := settings.NewService("PoeTool")
 
 	return &App{
 		SettingsHandler: settings.NewHandler(settingsService),
