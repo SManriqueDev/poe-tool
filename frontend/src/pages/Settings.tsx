@@ -1,21 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { LoadConfig, SaveConfig } from "../../wailsjs/go/backend/App";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { loadConfig, saveConfig } from "@/services/configService";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardDescription,
-  CardAction,
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { models } from "../../wailsjs/go/models";
-import Config = models.Config;
+import { settings } from "../../wailsjs/go/models";
+import Config = settings.Config;
 
 export default function Settings() {
   const [poeSessid, setPoeSessid] = useState("");
@@ -25,7 +24,7 @@ export default function Settings() {
   const [delay, setDelay] = useState(1000);
 
   useEffect(() => {
-    LoadConfig().then((cfg: Config) => {
+    loadConfig().then((cfg: Config) => {
       setPoeSessid(cfg.poesessid || "");
       setAccountName(cfg.accountName || "");
       setLeague(cfg.league || "");
@@ -35,7 +34,7 @@ export default function Settings() {
   }, []);
 
   const handleSave = async () => {
-    await SaveConfig({
+    await saveConfig({
       poesessid: poeSessid,
       accountName,
       league,

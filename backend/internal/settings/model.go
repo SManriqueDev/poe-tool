@@ -1,0 +1,9 @@
+package settings
+
+type Config struct {
+	PoeSessid         string `json:"poesessid"`
+	AccountName       string `json:"accountName"`
+	League            string `json:"league"`
+	AutomationEnabled bool   `json:"automationEnabled"`
+	Delay             int    `json:"delay"`
+}

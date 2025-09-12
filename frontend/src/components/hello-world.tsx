@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Greet } from "../../wailsjs/go/backend/App";
+// import { Greet } from "../../wailsjs/go/backend/App";
 
 const HelloWorld: React.FC = () => {
   const [resultText, setResultText] = useState("Please enter your name below");
@@ -16,9 +16,9 @@ const HelloWorld: React.FC = () => {
   const updateResultText = (result: string) => setResultText(result);
 
   function greet() {
-    Greet(name)
-      .then(updateResultText)
-      .then(() => toast("Greeted!"));
+    // Greet(name)
+    //   .then(updateResultText)
+    //   .then(() => toast("Greeted!"));
   }
   return (
     <Card className="p-4 mx-auto">

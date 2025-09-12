@@ -1,4 +1,4 @@
-export namespace models {
+export namespace settings {
 	
 	export class Config {
 	    poesessid: string;
