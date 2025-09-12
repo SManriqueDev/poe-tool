@@ -1,4 +1,4 @@
-module win-n8n
+module github.com/SManriqueDev/poe-tool
 
 go 1.23
 

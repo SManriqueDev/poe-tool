@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import type * as React from "react";
 import { Route, Routes } from "react-router";
+import Settings from "@/views/Settings";
 
 function App() {
   return (
@@ -12,8 +13,7 @@ function App() {
         <Toaster />
         <Layout>
           <Routes>
-            <Route path="/" element={<HelloWorld />} />
-            <Route path="/settings" element={<div>Settings Page</div>} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/search" element={<div>Search Page</div>} />
             <Route path="*" element={<div>404 Not Found</div>} />
           </Routes>

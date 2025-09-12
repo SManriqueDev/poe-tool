@@ -14,19 +14,15 @@ import { NavLink } from "react-router";
 // Menu items.
 const items = [
   {
-    title: "Home",
-    url: "/",
-    icon: Home,
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
   },
+
   {
     title: "Search",
     url: "/search",
     icon: Search,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
   },
 ];
 

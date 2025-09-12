@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Greet } from "../../wailsjs/go/main/App";
+import { Greet } from "../../wailsjs/go/backend/App";
 
 const HelloWorld: React.FC = () => {
   const [resultText, setResultText] = useState("Please enter your name below");
@@ -21,7 +21,7 @@ const HelloWorld: React.FC = () => {
       .then(() => toast("Greeted!"));
   }
   return (
-    <Card className="p-4">
+    <Card className="p-4 mx-auto">
       <div className="flex align-end justify-end">
         <ModeToggle />
       </div>
