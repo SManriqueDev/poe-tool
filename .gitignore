@@ -3,3 +3,5 @@ node_modules
 frontend/dist
 tasks
 .idea/
+package-lock.json
+package.json.md5

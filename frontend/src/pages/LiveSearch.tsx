@@ -1,22 +1,14 @@
-import React, { useEffect, useState } from "react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2 } from "lucide-react";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
-import { toast } from "sonner";
 import { listTradeLinks, addTradeLink, updateTradeLinks } from "@/services/liveSearchService";
 import { livesearch } from "../../wailsjs/go/models";
-
+import { toast } from "sonner";
 import TradeLink = livesearch.TradeLink;
+import { DataTable } from "@/live-search/data-table";
+import { getColumns } from "@/live-search/columns";
 
 export default function LiveSearch() {
   const [url, setUrl] = useState("");
@@ -27,7 +19,10 @@ export default function LiveSearch() {
   const [editDescription, setEditDescription] = useState("");
 
   useEffect(() => {
-    listTradeLinks().then(setLinks);
+    listTradeLinks().then((links) => {
+      console.log("Fetched trade links", links);
+      setLinks(links);
+    });
   }, []);
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -38,12 +33,6 @@ export default function LiveSearch() {
     setDescription("");
     setLinks(await listTradeLinks());
     toast("Link added!");
-  };
-
-  const handleSelect = (idx: number, checked: boolean) => {
-    const updated = links.map((l, i) => (i === idx ? { ...l, selected: checked } : l));
-    setLinks(updated);
-    updateTradeLinks(updated);
   };
 
   const handleDelete = async (idx: number) => {
@@ -97,7 +86,21 @@ export default function LiveSearch() {
           />
           <Button type="submit">Add</Button>
         </form>
-        <Table>
+        <DataTable
+          columns={getColumns({
+            editIdx,
+            editUrl,
+            editDescription,
+            setEditUrl,
+            setEditDescription,
+            handleEdit,
+            handleSaveEdit,
+            handleCancelEdit,
+            handleDelete,
+          })}
+          data={links}
+        />
+        {/*<Table>
           <TableHeader>
             <TableRow>
               <TableHead />
@@ -143,7 +146,7 @@ export default function LiveSearch() {
                   )}
                 </TableCell>
                 <TableCell>{link.status}</TableCell>
-                {/* <TableCell>
+                 <TableCell>
                   {editIdx === idx ? (
                     <>
                       <Button size="sm" onClick={() => handleSaveEdit(idx)}>
@@ -158,7 +161,7 @@ export default function LiveSearch() {
                       Edit
                     </Button>
                   )}
-                </TableCell>*/}
+                </TableCell>
                 <TableCell>
                   {editIdx === idx ? (
                     <>
@@ -189,7 +192,7 @@ export default function LiveSearch() {
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+        </Table>*/}
       </CardContent>
       <CardFooter>
         <Button className="w-full" onClick={handleStart}>
