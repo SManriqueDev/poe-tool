@@ -161,12 +161,23 @@ func (s *Service) StartLiveSearch() []TradeLink {
 				s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 				return
 			}
-			statusLinks[idx].Status = "ok"
-			s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
+			/*statusLinks[idx].Status = "ok"
+			s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])*/
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				statusLinks[idx].Status = "ok"
+				s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
+			}
 
 			for {
 				select {
 				case <-ctx.Done():
+					// Emit "idle" when stopping
+					statusLinks[idx].Status = "idle"
+					s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 					return
 				default:
 					_, message, err := conn.ReadMessage()
@@ -201,14 +212,6 @@ func (s *Service) StopLiveSearch() {
 		s.liveSearchCancel()
 		s.liveSearchCancel = nil
 	}
-
-	for i := range s.links {
-		if s.links[i].Selected && s.links[i].Status != "idle" {
-			s.links[i].Status = "idle"
-			s.eventBus.EmitStatusUpdate(s.ctx, s.links[i])
-		}
-	}
-	_ = s.repo.Save(s.links)
 	s.mu.Unlock()
 }
 
