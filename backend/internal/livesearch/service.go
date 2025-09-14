@@ -3,9 +3,7 @@ package livesearch
 import (
 	"context"
 	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
-	"github.com/gorilla/websocket"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-
 	"log"
 	"net/http"
 	"net/url"
@@ -21,6 +19,9 @@ type Service struct {
 	settingsSvc      *settings.Service
 	liveSearchCancel context.CancelFunc
 	ctx              context.Context
+	repo             *TradeLinkRepository
+	wsClient         *WebSocketClient
+	eventBus         EventBus
 }
 
 type WSMessage struct {
@@ -36,6 +37,9 @@ func NewService(settingsSvc *settings.Service) *Service {
 	return &Service{
 		links:       make([]TradeLink, 0),
 		settingsSvc: settingsSvc,
+		repo:        NewTradeLinkRepository(settingsSvc),
+		wsClient:    NewWebSocketClient(),
+		eventBus:    &WailsEventBus{},
 	}
 }
 
@@ -135,7 +139,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 		wg.Add(1)
 		go func(idx int, link TradeLink) {
 			defer wg.Done()
-			wsURL := url.URL{
+			/*wsURL := url.URL{
 				Scheme: "wss",
 				Host:   "www.pathofexile.com",
 				Path:   "/api/trade2/live/poe2/" + link.League + "/" + link.SearchID,
@@ -146,11 +150,12 @@ func (s *Service) StartLiveSearch() []TradeLink {
 			header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/)")
 			header.Set("Content-Type", "application/json")
 
-			conn, resp, err := websocket.DefaultDialer.Dial(wsURL.String(), header)
+			conn, resp, err := websocket.DefaultDialer.Dial(wsURL.String(), header)*/
+			conn, resp, err := s.wsClient.Connect(ctx, link, poeSess)
 			if err != nil {
 				if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 					statusLinks[idx].Status = "auth_error"
-					s.broadcastStatusUpdate(statusLinks[idx])
+					s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 				} else {
 					statusLinks[idx].Status = "error"
 				}
@@ -163,11 +168,11 @@ func (s *Service) StartLiveSearch() []TradeLink {
 			}
 			if err := conn.ReadJSON(&authResp); err != nil || !authResp.Auth {
 				statusLinks[idx].Status = "auth_error"
-				s.broadcastStatusUpdate(statusLinks[idx])
+				s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 				return
 			}
 			statusLinks[idx].Status = "ok"
-			s.broadcastStatusUpdate(statusLinks[idx])
+			s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 
 			for {
 				select {
@@ -213,7 +218,7 @@ func (s *Service) UpdateTradeLinks(links []TradeLink) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.links = links
-	_ = s.SaveLinksToConfig()
+	_ = s.repo.Save(links)
 }
 
 func ParseTradeLink(tradeURL string) (string, string) {
