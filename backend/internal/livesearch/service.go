@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
 	"github.com/gorilla/websocket"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
 	"log"
 	"net/http"
 	"net/url"
@@ -16,11 +18,16 @@ type Service struct {
 	mu               sync.Mutex
 	settingsSvc      *settings.Service
 	liveSearchCancel context.CancelFunc
+	ctx              context.Context
 }
 
 type WSMessage struct {
 	SearchID string
 	Message  []byte
+}
+
+func (s *Service) SetContext(ctx context.Context) {
+	s.ctx = ctx
 }
 
 func NewService(settingsSvc *settings.Service) *Service {
@@ -58,6 +65,12 @@ func (s *Service) SaveLinksToConfig() error {
 		})
 	}
 	return s.settingsSvc.Save()
+}
+
+func (s *Service) broadcastStatusUpdate(link TradeLink) {
+	if s.ctx != nil {
+		runtime.EventsEmit(s.ctx, "linkStatusChanged", link)
+	}
 }
 
 func (s *Service) AddTradeLink(url string, description string) {
@@ -130,8 +143,12 @@ func (s *Service) StartLiveSearch() []TradeLink {
 
 			conn, resp, err := websocket.DefaultDialer.Dial(wsURL.String(), header)
 			if err != nil {
-				log.Printf("WebSocket dial error for %s: %v (HTTP %v)", wsURL.String(), err, resp)
-				statusLinks[idx].Status = "error"
+				if resp != nil && resp.StatusCode == http.StatusUnauthorized {
+					statusLinks[idx].Status = "auth_error"
+					s.broadcastStatusUpdate(statusLinks[idx])
+				} else {
+					statusLinks[idx].Status = "error"
+				}
 				return
 			}
 			defer conn.Close()
@@ -141,9 +158,11 @@ func (s *Service) StartLiveSearch() []TradeLink {
 			}
 			if err := conn.ReadJSON(&authResp); err != nil || !authResp.Auth {
 				statusLinks[idx].Status = "auth_error"
+				s.broadcastStatusUpdate(statusLinks[idx])
 				return
 			}
 			statusLinks[idx].Status = "ok"
+			s.broadcastStatusUpdate(statusLinks[idx])
 
 			for {
 				select {

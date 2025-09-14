@@ -1,5 +1,7 @@
 package livesearch
 
+import "context"
+
 type Handler struct {
 	svc *Service
 }
@@ -26,4 +28,8 @@ func (h *Handler) StartLiveSearch() []TradeLink {
 
 func (h *Handler) StopLiveSearch() {
 	h.svc.StopLiveSearch()
+}
+
+func (h *Handler) SetContext(ctx context.Context) {
+	h.svc.SetContext(ctx)
 }

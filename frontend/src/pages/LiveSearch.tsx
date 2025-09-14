@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import TradeLink = livesearch.TradeLink;
 import { DataTable } from "@/live-search/data-table";
 import { getColumns } from "@/live-search/columns";
+import { EventsOn } from "../../wailsjs/runtime";
 
 export default function LiveSearch() {
   const [url, setUrl] = useState("");
@@ -30,6 +31,15 @@ export default function LiveSearch() {
       console.log("Fetched trade links", links);
       setLinks(links);
     });
+
+    const off = EventsOn("linkStatusChanged", (link: TradeLink) => {
+      console.log("Received linkStatusChanged event", link);
+      // Actualiza el estado local según el enlace recibido
+      setLinks((prev) => prev.map((l) => (l.searchId === link.searchId ? { ...l, ...link } : l)));
+    });
+    return () => {
+      off();
+    };
   }, []);
 
   const handleAdd = async (e: React.FormEvent) => {
