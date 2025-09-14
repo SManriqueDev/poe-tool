@@ -13,6 +13,8 @@ import (
 	"sync"
 )
 
+const workerCount = 10 // Number of concurrent workers
+
 type Service struct {
 	links            []TradeLink
 	mu               sync.Mutex
@@ -103,7 +105,6 @@ func (s *Service) StartLiveSearch() []TradeLink {
 
 	s.mu.Lock()
 	links := append([]TradeLink{}, s.links...)
-	// Cancel any previous live search
 	if s.liveSearchCancel != nil {
 		s.liveSearchCancel()
 	}
@@ -115,13 +116,16 @@ func (s *Service) StartLiveSearch() []TradeLink {
 	statusLinks := make([]TradeLink, len(links))
 	msgCh := make(chan WSMessage, 100)
 
-	// Processor goroutine: handle all incoming messages
-	go func() {
-		for msg := range msgCh {
-			log.Printf("Processing message for %s: %s", msg.SearchID, string(msg.Message))
-			// Extend: update state, notify frontend, etc.
-		}
-	}()
+	// Start worker pool
+	for i := 0; i < workerCount; i++ {
+		go func() {
+			for msg := range msgCh {
+				// Process each message (extend as needed)
+				log.Printf("Processing message for %s: %s", msg.SearchID, string(msg.Message))
+				// Optionally: update state, notify frontend, etc.
+			}
+		}()
+	}
 
 	for i, link := range links {
 		statusLinks[i] = link
@@ -175,7 +179,12 @@ func (s *Service) StartLiveSearch() []TradeLink {
 						log.Printf("WebSocket read error: %v", err)
 						return
 					}
-					msgCh <- WSMessage{SearchID: link.SearchID, Message: message}
+					// Non-blocking send to avoid blocking if channel is full
+					select {
+					case msgCh <- WSMessage{SearchID: link.SearchID, Message: message}:
+					default:
+						log.Printf("msgCh full, dropping message for %s", link.SearchID)
+					}
 				}
 			}
 		}(i, link)
