@@ -49,7 +49,7 @@ func (s *Service) LoadLinksFromConfig() {
 			SearchID:    searchId,
 			URL:         d.URL,
 			Description: d.Description,
-			Selected:    false,
+			Selected:    d.Selected,
 			Status:      "idle",
 		})
 	}
@@ -62,6 +62,7 @@ func (s *Service) SaveLinksToConfig() error {
 		cfg.DefaultTradeLinks = append(cfg.DefaultTradeLinks, settings.DefaultTradeLink{
 			URL:         l.URL,
 			Description: l.Description,
+			Selected:    l.Selected,
 		})
 	}
 	return s.settingsSvc.Save()

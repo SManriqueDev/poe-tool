@@ -3,6 +3,7 @@ package settings
 type DefaultTradeLink struct {
 	URL         string `json:"url"`
 	Description string `json:"description"`
+	Selected    bool   `json:"selected"`
 }
 type Config struct {
 	PoeSessid         string             `json:"poesessid"`

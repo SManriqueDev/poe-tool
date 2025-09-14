@@ -30,6 +30,7 @@ export namespace settings {
 	export class DefaultTradeLink {
 	    url: string;
 	    description: string;
+	    selected: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new DefaultTradeLink(source);
@@ -39,6 +40,7 @@ export namespace settings {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.url = source["url"];
 	        this.description = source["description"];
+	        this.selected = source["selected"];
 	    }
 	}
 	export class Config {
