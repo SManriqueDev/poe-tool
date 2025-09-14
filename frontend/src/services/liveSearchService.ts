@@ -2,6 +2,7 @@ import {
   AddTradeLink,
   UpdateTradeLinks,
   ListTradeLinks,
+  StopLiveSearch,
   StartLiveSearch,
 } from "../../wailsjs/go/livesearch/Handler";
 import { livesearch } from "../../wailsjs/go/models";
@@ -21,4 +22,8 @@ export async function listTradeLinks(): Promise<TradeLink[]> {
 
 export async function startLiveSearch() {
   return StartLiveSearch();
+}
+
+export async function stopLiveSearch() {
+  return StopLiveSearch();
 }

@@ -8,6 +8,7 @@ import {
   addTradeLink,
   updateTradeLinks,
   startLiveSearch,
+  stopLiveSearch,
 } from "@/services/liveSearchService";
 import { livesearch } from "../../wailsjs/go/models";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ export default function LiveSearch() {
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [editUrl, setEditUrl] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [isLiveSearchRunning, setIsLiveSearchRunning] = useState(false);
 
   useEffect(() => {
     listTradeLinks().then((links) => {
@@ -68,12 +70,23 @@ export default function LiveSearch() {
   };
 
   const handleStart = async () => {
+    setIsLiveSearchRunning(true);
     toast("Starting live search for selected links...");
     const updatedLinks = await startLiveSearch();
+    console.log("Live search started, updated links:", updatedLinks);
     setLinks(updatedLinks);
     if (updatedLinks.some((link) => link.status === "auth_error")) {
       toast.error("Your POESESSID is invalid or expired. Please update it in settings.");
+      setIsLiveSearchRunning(false);
     }
+  };
+
+  const handleStop = async () => {
+    await stopLiveSearch();
+    setIsLiveSearchRunning(false);
+    toast("Live search stopped.");
+    // Optionally, refresh links status
+    setLinks(await listTradeLinks());
   };
 
   const handleSelect = async (idx: number, selected: boolean) => {
@@ -213,9 +226,18 @@ export default function LiveSearch() {
         </Table>*/}
       </CardContent>
       <CardFooter>
-        <Button className="w-full" onClick={handleStart}>
+        {/*<Button className="w-full" onClick={handleStart}>
           Start Live Search
-        </Button>
+        </Button>*/}
+        {isLiveSearchRunning ? (
+          <Button className="w-full" variant="destructive" onClick={handleStop}>
+            Stop Live Search
+          </Button>
+        ) : (
+          <Button className="w-full" onClick={handleStart}>
+            Start Live Search
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

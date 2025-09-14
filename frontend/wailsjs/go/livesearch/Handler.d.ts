@@ -8,4 +8,6 @@ export function ListTradeLinks():Promise<Array<livesearch.TradeLink>>;
 
 export function StartLiveSearch():Promise<Array<livesearch.TradeLink>>;
 
+export function StopLiveSearch():Promise<void>;
+
 export function UpdateTradeLinks(arg1:Array<livesearch.TradeLink>):Promise<void>;

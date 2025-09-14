@@ -1,6 +1,7 @@
 package livesearch
 
 import (
+	"context"
 	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
 	"github.com/gorilla/websocket"
 	"log"
@@ -11,9 +12,15 @@ import (
 )
 
 type Service struct {
-	links       []TradeLink
-	mu          sync.Mutex
-	settingsSvc *settings.Service
+	links            []TradeLink
+	mu               sync.Mutex
+	settingsSvc      *settings.Service
+	liveSearchCancel context.CancelFunc
+}
+
+type WSMessage struct {
+	SearchID string
+	Message  []byte
 }
 
 func NewService(settingsSvc *settings.Service) *Service {
@@ -82,10 +89,25 @@ func (s *Service) StartLiveSearch() []TradeLink {
 
 	s.mu.Lock()
 	links := append([]TradeLink{}, s.links...)
+	// Cancel any previous live search
+	if s.liveSearchCancel != nil {
+		s.liveSearchCancel()
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	s.liveSearchCancel = cancel
 	s.mu.Unlock()
 
 	var wg sync.WaitGroup
 	statusLinks := make([]TradeLink, len(links))
+	msgCh := make(chan WSMessage, 100)
+
+	// Processor goroutine: handle all incoming messages
+	go func() {
+		for msg := range msgCh {
+			log.Printf("Processing message for %s: %s", msg.SearchID, string(msg.Message))
+			// Extend: update state, notify frontend, etc.
+		}
+	}()
 
 	for i, link := range links {
 		statusLinks[i] = link
@@ -98,16 +120,18 @@ func (s *Service) StartLiveSearch() []TradeLink {
 			wsURL := url.URL{
 				Scheme: "wss",
 				Host:   "www.pathofexile.com",
-				Path:   "/api/trade2/live/" + url.PathEscape(link.League) + "/" + link.SearchID,
+				Path:   "/api/trade2/live/poe2/" + link.League + "/" + link.SearchID,
 			}
 			header := http.Header{}
 			header.Set("Cookie", "POESESSID="+poeSess)
+			header.Set("Origin", "https://www.pathofexile.com")
+			header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/)")
 			header.Set("Content-Type", "application/json")
 
 			conn, resp, err := websocket.DefaultDialer.Dial(wsURL.String(), header)
-
 			if err != nil {
 				log.Printf("WebSocket dial error for %s: %v (HTTP %v)", wsURL.String(), err, resp)
+				statusLinks[idx].Status = "error"
 				return
 			}
 			defer conn.Close()
@@ -120,10 +144,40 @@ func (s *Service) StartLiveSearch() []TradeLink {
 				return
 			}
 			statusLinks[idx].Status = "ok"
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					_, message, err := conn.ReadMessage()
+					if err != nil {
+						log.Printf("WebSocket read error: %v", err)
+						return
+					}
+					msgCh <- WSMessage{SearchID: link.SearchID, Message: message}
+				}
+			}
 		}(i, link)
 	}
 	wg.Wait()
+	close(msgCh)
+
+	s.mu.Lock()
+	s.links = statusLinks
+	_ = s.SaveLinksToConfig()
+	s.mu.Unlock()
+
 	return statusLinks
+}
+
+func (s *Service) StopLiveSearch() {
+	s.mu.Lock()
+	if s.liveSearchCancel != nil {
+		s.liveSearchCancel()
+		s.liveSearchCancel = nil
+	}
+	s.mu.Unlock()
 }
 
 func (s *Service) UpdateTradeLinks(links []TradeLink) {

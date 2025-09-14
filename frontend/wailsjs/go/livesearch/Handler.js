@@ -14,6 +14,10 @@ export function StartLiveSearch() {
   return window['go']['livesearch']['Handler']['StartLiveSearch']();
 }
 
+export function StopLiveSearch() {
+  return window['go']['livesearch']['Handler']['StopLiveSearch']();
+}
+
 export function UpdateTradeLinks(arg1) {
   return window['go']['livesearch']['Handler']['UpdateTradeLinks'](arg1);
 }

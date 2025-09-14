@@ -23,3 +23,7 @@ func (h *Handler) UpdateTradeLinks(links []TradeLink) {
 func (h *Handler) StartLiveSearch() []TradeLink {
 	return h.svc.StartLiveSearch()
 }
+
+func (h *Handler) StopLiveSearch() {
+	h.svc.StopLiveSearch()
+}
