@@ -95,8 +95,6 @@ export default function LiveSearch() {
     await stopLiveSearch();
     setIsLiveSearchRunning(false);
     toast("Live search stopped.");
-    // Optionally, refresh links status
-    setLinks(await listTradeLinks());
   };
 
   const handleSelect = async (idx: number, selected: boolean) => {

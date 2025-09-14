@@ -2,13 +2,14 @@ package livesearch
 
 import (
 	"context"
-	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+
+	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 const workerCount = 10 // Number of concurrent workers
@@ -139,18 +140,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 		wg.Add(1)
 		go func(idx int, link TradeLink) {
 			defer wg.Done()
-			/*wsURL := url.URL{
-				Scheme: "wss",
-				Host:   "www.pathofexile.com",
-				Path:   "/api/trade2/live/poe2/" + link.League + "/" + link.SearchID,
-			}
-			header := http.Header{}
-			header.Set("Cookie", "POESESSID="+poeSess)
-			header.Set("Origin", "https://www.pathofexile.com")
-			header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/)")
-			header.Set("Content-Type", "application/json")
 
-			conn, resp, err := websocket.DefaultDialer.Dial(wsURL.String(), header)*/
 			conn, resp, err := s.wsClient.Connect(ctx, link, poeSess)
 			if err != nil {
 				if resp != nil && resp.StatusCode == http.StatusUnauthorized {
@@ -199,7 +189,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 
 	s.mu.Lock()
 	s.links = statusLinks
-	_ = s.SaveLinksToConfig()
+	_ = s.repo.Save(statusLinks)
 	s.mu.Unlock()
 
 	return statusLinks
@@ -211,6 +201,14 @@ func (s *Service) StopLiveSearch() {
 		s.liveSearchCancel()
 		s.liveSearchCancel = nil
 	}
+
+	for i := range s.links {
+		if s.links[i].Selected && s.links[i].Status != "idle" {
+			s.links[i].Status = "idle"
+			s.eventBus.EmitStatusUpdate(s.ctx, s.links[i])
+		}
+	}
+	_ = s.repo.Save(s.links)
 	s.mu.Unlock()
 }
 
