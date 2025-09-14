@@ -6,4 +6,6 @@ export function AddTradeLink(arg1:string,arg2:string):Promise<void>;
 
 export function ListTradeLinks():Promise<Array<livesearch.TradeLink>>;
 
+export function StartLiveSearch():Promise<Array<livesearch.TradeLink>>;
+
 export function UpdateTradeLinks(arg1:Array<livesearch.TradeLink>):Promise<void>;

@@ -1,11 +1,13 @@
 package livesearch
 
 import (
+	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
+	"github.com/gorilla/websocket"
+	"log"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
-
-	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
 )
 
 type Service struct {
@@ -72,6 +74,56 @@ func (s *Service) ListTradeLinks() []TradeLink {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]TradeLink{}, s.links...)
+}
+
+func (s *Service) StartLiveSearch() []TradeLink {
+	cfg := s.settingsSvc.Get()
+	poeSess := cfg.PoeSessid
+
+	s.mu.Lock()
+	links := append([]TradeLink{}, s.links...)
+	s.mu.Unlock()
+
+	var wg sync.WaitGroup
+	statusLinks := make([]TradeLink, len(links))
+
+	for i, link := range links {
+		statusLinks[i] = link
+		if !link.Selected {
+			continue
+		}
+		wg.Add(1)
+		go func(idx int, link TradeLink) {
+			defer wg.Done()
+			wsURL := url.URL{
+				Scheme: "wss",
+				Host:   "www.pathofexile.com",
+				Path:   "/api/trade2/live/" + url.PathEscape(link.League) + "/" + link.SearchID,
+			}
+			header := http.Header{}
+			header.Set("Cookie", "POESESSID="+poeSess)
+			header.Set("Content-Type", "application/json")
+
+			conn, resp, err := websocket.DefaultDialer.Dial(wsURL.String(), header)
+
+			if err != nil {
+				log.Printf("WebSocket dial error for %s: %v (HTTP %v)", wsURL.String(), err, resp)
+				return
+			}
+			defer conn.Close()
+
+			var authResp struct {
+				Auth bool `json:"auth"`
+			}
+			if err := conn.ReadJSON(&authResp); err != nil || !authResp.Auth {
+				statusLinks[idx].Status = "auth_error"
+				return
+			}
+			statusLinks[idx].Status = "ok"
+		}(i, link)
+	}
+	wg.Wait()
+	return statusLinks
 }
 
 func (s *Service) UpdateTradeLinks(links []TradeLink) {

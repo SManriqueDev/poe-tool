@@ -18,25 +18,31 @@ type ActionsProps = {
   handleSaveEdit: (idx: number) => void;
   handleCancelEdit: () => void;
   handleDelete: (idx: number) => void;
+  handleSelect(idx: number, selected: boolean): void;
+  data: TradeLink[];
 };
 
 export const getColumns = (actions: ActionsProps): ColumnDef<TradeLink>[] => [
   {
     id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
+    header: () => {
+      // Determine if all or some are selected
+      const allSelected = actions.data.every((l) => l.selected);
+      const someSelected = actions.data.some((l) => l.selected) && !allSelected;
+      return (
+        <Checkbox
+          checked={allSelected ? true : someSelected ? "indeterminate" : false}
+          onCheckedChange={(value) => {
+            actions.data.forEach((_, idx) => actions.handleSelect(idx, !!value));
+          }}
+          aria-label="Select all"
+        />
+      );
+    },
     cell: ({ row }) => (
       <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
+        checked={row.original.selected}
+        onCheckedChange={(checked) => actions.handleSelect(row.index, !!checked)}
       />
     ),
     enableSorting: false,

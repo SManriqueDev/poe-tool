@@ -10,6 +10,10 @@ export function ListTradeLinks() {
   return window['go']['livesearch']['Handler']['ListTradeLinks']();
 }
 
+export function StartLiveSearch() {
+  return window['go']['livesearch']['Handler']['StartLiveSearch']();
+}
+
 export function UpdateTradeLinks(arg1) {
   return window['go']['livesearch']['Handler']['UpdateTradeLinks'](arg1);
 }

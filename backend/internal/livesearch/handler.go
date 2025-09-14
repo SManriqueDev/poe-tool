@@ -19,3 +19,7 @@ func (h *Handler) ListTradeLinks() []TradeLink {
 func (h *Handler) UpdateTradeLinks(links []TradeLink) {
 	h.svc.UpdateTradeLinks(links)
 }
+
+func (h *Handler) StartLiveSearch() []TradeLink {
+	return h.svc.StartLiveSearch()
+}

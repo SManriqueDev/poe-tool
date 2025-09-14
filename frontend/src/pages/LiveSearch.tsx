@@ -3,7 +3,12 @@ import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { listTradeLinks, addTradeLink, updateTradeLinks } from "@/services/liveSearchService";
+import {
+  listTradeLinks,
+  addTradeLink,
+  updateTradeLinks,
+  startLiveSearch,
+} from "@/services/liveSearchService";
 import { livesearch } from "../../wailsjs/go/models";
 import { toast } from "sonner";
 import TradeLink = livesearch.TradeLink;
@@ -62,8 +67,19 @@ export default function LiveSearch() {
     setEditIdx(null);
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     toast("Starting live search for selected links...");
+    const updatedLinks = await startLiveSearch();
+    setLinks(updatedLinks);
+    if (updatedLinks.some((link) => link.status === "auth_error")) {
+      toast.error("Your POESESSID is invalid or expired. Please update it in settings.");
+    }
+  };
+
+  const handleSelect = async (idx: number, selected: boolean) => {
+    const updated = links.map((l, i) => (i === idx ? { ...l, selected } : l));
+    setLinks(updated);
+    await updateTradeLinks(updated);
   };
 
   return (
@@ -97,6 +113,8 @@ export default function LiveSearch() {
             handleSaveEdit,
             handleCancelEdit,
             handleDelete,
+            handleSelect,
+            data: links,
           })}
           data={links}
         />
