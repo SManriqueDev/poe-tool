@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/corpix/uarand"
 	"github.com/gorilla/websocket"
 )
 
@@ -24,7 +25,7 @@ func (c *WebSocketClient) Connect(ctx context.Context, link TradeLink, poeSess s
 	header := http.Header{}
 	header.Set("Cookie", "POESESSID="+poeSess)
 	header.Set("Origin", "https://www.pathofexile.com")
-	header.Set("User-Agent", "Mozilla/5.0 ...")
+	header.Set("User-Agent", uarand.GetRandom())
 	header.Set("Content-Type", "application/json")
 
 	return websocket.DefaultDialer.DialContext(ctx, wsURL.String(), header)

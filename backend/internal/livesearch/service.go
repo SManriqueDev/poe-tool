@@ -117,30 +117,43 @@ func (s *Service) StartLiveSearch() []TradeLink {
 	s.liveSearchCancel = cancel
 	s.mu.Unlock()
 
+	// Filter selected links
+	var selectedLinks []TradeLink
+	for _, link := range links {
+		if link.Selected {
+			selectedLinks = append(selectedLinks, link)
+		}
+	}
+	if len(selectedLinks) == 0 {
+		return links
+	}
+
 	var wg sync.WaitGroup
 	statusLinks := make([]TradeLink, len(links))
+	copy(statusLinks, links)
 	msgCh := make(chan WSMessage, 100)
 
-	// Start worker pool
+	// Worker pool
+	var workerWg sync.WaitGroup
 	for i := 0; i < workerCount; i++ {
+		workerWg.Add(1)
 		go func() {
+			defer workerWg.Done()
 			for msg := range msgCh {
-				// Process each message (extend as needed)
 				log.Printf("Processing message for %s: %s", msg.SearchID, string(msg.Message))
-				// Optionally: update state, notify frontend, etc.
+				// Extend as needed
 			}
 		}()
 	}
 
+	// Launch goroutines only for selected links
 	for i, link := range links {
-		statusLinks[i] = link
 		if !link.Selected {
 			continue
 		}
 		wg.Add(1)
 		go func(idx int, link TradeLink) {
 			defer wg.Done()
-
 			conn, resp, err := s.wsClient.Connect(ctx, link, poeSess)
 			if err != nil {
 				if resp != nil && resp.StatusCode == http.StatusUnauthorized {
@@ -161,8 +174,6 @@ func (s *Service) StartLiveSearch() []TradeLink {
 				s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 				return
 			}
-			/*statusLinks[idx].Status = "ok"
-			s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])*/
 
 			select {
 			case <-ctx.Done():
@@ -175,7 +186,6 @@ func (s *Service) StartLiveSearch() []TradeLink {
 			for {
 				select {
 				case <-ctx.Done():
-					// Emit "idle" when stopping
 					statusLinks[idx].Status = "idle"
 					s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 					return
@@ -185,7 +195,6 @@ func (s *Service) StartLiveSearch() []TradeLink {
 						log.Printf("WebSocket read error: %v", err)
 						return
 					}
-					// Non-blocking send to avoid blocking if channel is full
 					select {
 					case msgCh <- WSMessage{SearchID: link.SearchID, Message: message}:
 					default:
@@ -197,6 +206,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 	}
 	wg.Wait()
 	close(msgCh)
+	workerWg.Wait()
 
 	s.mu.Lock()
 	s.links = statusLinks
