@@ -4,6 +4,8 @@ import {
   ListTradeLinks,
   StopLiveSearch,
   StartLiveSearch,
+    SetGoToHideout,
+    GetGoToHideout
 } from "../../wailsjs/go/livesearch/Handler";
 import { livesearch } from "../../wailsjs/go/models";
 import TradeLink = livesearch.TradeLink;
@@ -26,4 +28,12 @@ export async function startLiveSearch() {
 
 export async function stopLiveSearch() {
   return StopLiveSearch();
+}
+
+export async function setGoToHideout(value: boolean) {
+    return SetGoToHideout(value);
+}
+
+export async function getGoToHideout(): Promise<boolean> {
+    return GetGoToHideout();
 }

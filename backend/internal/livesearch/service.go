@@ -23,6 +23,7 @@ type Service struct {
 	repo             *TradeLinkRepository
 	wsClient         *WebSocketClient
 	eventBus         EventBus
+	liveSearchWG     *sync.WaitGroup
 }
 
 type WSMessage struct {
@@ -128,7 +129,8 @@ func (s *Service) StartLiveSearch() []TradeLink {
 		return links
 	}
 
-	var wg sync.WaitGroup
+	//var wg sync.WaitGroup
+	s.liveSearchWG = &sync.WaitGroup{}
 	statusLinks := make([]TradeLink, len(links))
 	copy(statusLinks, links)
 	msgCh := make(chan WSMessage, 100)
@@ -151,9 +153,11 @@ func (s *Service) StartLiveSearch() []TradeLink {
 		if !link.Selected {
 			continue
 		}
-		wg.Add(1)
+		//wg.Add(1)
+		s.liveSearchWG.Add(1)
 		go func(idx int, link TradeLink) {
-			defer wg.Done()
+			//defer wg.Done()
+			defer s.liveSearchWG.Done()
 			conn, resp, err := s.wsClient.Connect(ctx, link, poeSess)
 			if err != nil {
 				if resp != nil && resp.StatusCode == http.StatusUnauthorized {
@@ -204,7 +208,8 @@ func (s *Service) StartLiveSearch() []TradeLink {
 			}
 		}(i, link)
 	}
-	wg.Wait()
+	//wg.Wait()
+	s.liveSearchWG.Wait()
 	close(msgCh)
 	workerWg.Wait()
 
@@ -221,6 +226,10 @@ func (s *Service) StopLiveSearch() {
 	if s.liveSearchCancel != nil {
 		s.liveSearchCancel()
 		s.liveSearchCancel = nil
+	}
+	for i := range s.links {
+		s.links[i].Status = "idle"
+		s.eventBus.EmitStatusUpdate(s.ctx, s.links[i])
 	}
 	s.mu.Unlock()
 }
@@ -242,4 +251,10 @@ func ParseTradeLink(tradeURL string) (string, string) {
 		return "", ""
 	}
 	return parts[len(parts)-2], parts[len(parts)-1]
+}
+
+func (s *Service) SetGoToHideout(value bool) error {
+	cfg := s.settingsSvc.Get()
+	cfg.GoToHideout = value
+	return s.settingsSvc.Save()
 }

@@ -12,4 +12,5 @@ type Config struct {
 	AutomationEnabled bool               `json:"automationEnabled"`
 	Delay             int                `json:"delay"`
 	DefaultTradeLinks []DefaultTradeLink `json:"defaultTradeLinks"`
+	GoToHideout       bool               `json:"goToHideout"`
 }

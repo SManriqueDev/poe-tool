@@ -33,3 +33,12 @@ func (h *Handler) StopLiveSearch() {
 func (h *Handler) SetContext(ctx context.Context) {
 	h.svc.SetContext(ctx)
 }
+
+func (h *Handler) SetGoToHideout(value bool) error {
+	return h.svc.SetGoToHideout(value)
+}
+
+func (h *Handler) GetGoToHideout() bool {
+	cfg := h.svc.settingsSvc.Get()
+	return cfg.GoToHideout
+}

@@ -5,9 +5,13 @@ import {context} from '../models';
 
 export function AddTradeLink(arg1:string,arg2:string):Promise<void>;
 
+export function GetGoToHideout():Promise<boolean>;
+
 export function ListTradeLinks():Promise<Array<livesearch.TradeLink>>;
 
 export function SetContext(arg1:context.Context):Promise<void>;
+
+export function SetGoToHideout(arg1:boolean):Promise<void>;
 
 export function StartLiveSearch():Promise<Array<livesearch.TradeLink>>;
 

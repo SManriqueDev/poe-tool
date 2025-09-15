@@ -50,6 +50,7 @@ export namespace settings {
 	    automationEnabled: boolean;
 	    delay: number;
 	    defaultTradeLinks: DefaultTradeLink[];
+	    goToHideout: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -63,6 +64,7 @@ export namespace settings {
 	        this.automationEnabled = source["automationEnabled"];
 	        this.delay = source["delay"];
 	        this.defaultTradeLinks = this.convertValues(source["defaultTradeLinks"], DefaultTradeLink);
+	        this.goToHideout = source["goToHideout"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

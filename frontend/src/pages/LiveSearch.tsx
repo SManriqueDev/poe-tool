@@ -3,21 +3,24 @@ import {useEffect, useState} from "react";
 import {Input} from "@/components/ui/input";
 import {Button} from "@/components/ui/button";
 import {Card, CardHeader, CardTitle, CardContent, CardFooter} from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import {Checkbox} from "@/components/ui/checkbox";
+import {Label} from "@/components/ui/label";
 import {
     listTradeLinks,
     addTradeLink,
     updateTradeLinks,
     startLiveSearch,
     stopLiveSearch,
+    setGoToHideout
 } from "@/services/liveSearchService";
 import {livesearch} from "../../wailsjs/go/models";
+
 import {toast} from "sonner";
 import TradeLink = livesearch.TradeLink;
 import {DataTable} from "@/live-search/data-table";
 import {getColumns} from "@/live-search/columns";
 import {EventsOn} from "../../wailsjs/runtime";
+import {GetGoToHideout} from "../../wailsjs/go/livesearch/Handler";
 
 export default function LiveSearch() {
     const [url, setUrl] = useState("");
@@ -27,7 +30,7 @@ export default function LiveSearch() {
     const [editUrl, setEditUrl] = useState("");
     const [editDescription, setEditDescription] = useState("");
     const [isLiveSearchRunning, setIsLiveSearchRunning] = useState(false);
-    const [goToHideout, setGoToHideout] = useState(false);
+    const [goToHideout, setGoToH] = useState(false);
 
 
     useEffect(() => {
@@ -35,6 +38,8 @@ export default function LiveSearch() {
             console.log("Fetched trade links", links);
             setLinks(links);
         });
+
+        GetGoToHideout().then(setGoToH);
 
         const off = EventsOn("linkStatusChanged", (link: TradeLink) => {
             console.log("Received linkStatusChanged event", link);
@@ -107,6 +112,11 @@ export default function LiveSearch() {
         await updateTradeLinks(updated);
     };
 
+    const handleGoToHideoutChange = async (value: boolean) => {
+        setGoToH(value);
+        await setGoToHideout(value);
+    };
+
     return (
         <Card className="max-w-3xl w-full mx-auto mt-12">
             <CardHeader>
@@ -117,7 +127,7 @@ export default function LiveSearch() {
                     <Checkbox
                         id="goToHideout"
                         checked={goToHideout}
-                        onCheckedChange={setGoToHideout}
+                        onCheckedChange={handleGoToHideoutChange}
                     />
                     <Label htmlFor="goToHideout">
                         Attempt to visit seller's hideout (if available)
