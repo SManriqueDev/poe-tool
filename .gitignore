@@ -5,3 +5,4 @@ tasks
 .idea/
 package-lock.json
 package.json.md5
+*.db

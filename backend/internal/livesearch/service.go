@@ -20,7 +20,7 @@ type Service struct {
 	settingsSvc      *settings.Service
 	liveSearchCancel context.CancelFunc
 	ctx              context.Context
-	repo             *TradeLinkRepository
+	repo             *Repository
 	wsClient         *WebSocketClient
 	eventBus         EventBus
 	liveSearchWG     *sync.WaitGroup
@@ -39,42 +39,42 @@ func NewService(settingsSvc *settings.Service) *Service {
 	return &Service{
 		links:       make([]TradeLink, 0),
 		settingsSvc: settingsSvc,
-		repo:        NewTradeLinkRepository(settingsSvc),
+		repo:        NewRepository(),
 		wsClient:    NewWebSocketClient(),
 		eventBus:    &WailsEventBus{},
 	}
 }
 
-func (s *Service) LoadLinksFromConfig() {
-	cfg := s.settingsSvc.Get()
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.links = make([]TradeLink, 0)
-	for _, d := range cfg.DefaultTradeLinks {
-		league, searchId := ParseTradeLink(d.URL)
-		s.links = append(s.links, TradeLink{
-			League:      league,
-			SearchID:    searchId,
-			URL:         d.URL,
-			Description: d.Description,
-			Selected:    d.Selected,
-			Status:      "idle",
-		})
-	}
-}
+//func (s *Service) LoadLinksFromConfig() {
+//	cfg := s.settingsSvc.Get()
+//	s.mu.Lock()
+//	defer s.mu.Unlock()
+//	s.links = make([]TradeLink, 0)
+//	for _, d := range cfg.DefaultTradeLinks {
+//		league, searchId := ParseTradeLink(d.URL)
+//		s.links = append(s.links, TradeLink{
+//			League:      league,
+//			SearchID:    searchId,
+//			URL:         d.URL,
+//			Description: d.Description,
+//			Selected:    d.Selected,
+//			Status:      "idle",
+//		})
+//	}
+//}
 
-func (s *Service) SaveLinksToConfig() error {
-	cfg := s.settingsSvc.Get()
-	cfg.DefaultTradeLinks = make([]settings.DefaultTradeLink, 0)
-	for _, l := range s.links {
-		cfg.DefaultTradeLinks = append(cfg.DefaultTradeLinks, settings.DefaultTradeLink{
-			URL:         l.URL,
-			Description: l.Description,
-			Selected:    l.Selected,
-		})
-	}
-	return s.settingsSvc.Save()
-}
+//func (s *Service) SaveLinksToConfig() error {
+//	cfg := s.settingsSvc.Get()
+//	cfg.DefaultTradeLinks = make([]settings.DefaultTradeLink, 0)
+//	for _, l := range s.links {
+//		cfg.DefaultTradeLinks = append(cfg.DefaultTradeLinks, settings.DefaultTradeLink{
+//			URL:         l.URL,
+//			Description: l.Description,
+//			Selected:    l.Selected,
+//		})
+//	}
+//	return s.settingsSvc.Save()
+//}
 
 func (s *Service) broadcastStatusUpdate(link TradeLink) {
 	if s.ctx != nil {
@@ -83,34 +83,48 @@ func (s *Service) broadcastStatusUpdate(link TradeLink) {
 }
 
 func (s *Service) AddTradeLink(url string, description string) {
-	league, searchId := ParseTradeLink(url)
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.links = append(s.links, TradeLink{
-		League:      league,
-		SearchID:    searchId,
+	link := TradeLink{
 		URL:         url,
 		Description: description,
-		Selected:    false,
 		Status:      "idle",
-	})
-
-	_ = s.SaveLinksToConfig()
+	}
+	s.links = append(s.links, link)
+	log.Printf("Added trade link: %s", url)
+	_ = s.repo.AddTradeLink(link.URL, link.Description)
 }
 
 func (s *Service) ListTradeLinks() []TradeLink {
-	s.LoadLinksFromConfig()
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return append([]TradeLink{}, s.links...)
+	links, err := s.repo.GetTradeLinks()
+	if err != nil {
+		return []TradeLink{}
+	}
+
+	var tradeLinks []TradeLink
+	for _, l := range links {
+		league, searchId := ParseTradeLink(l.URL)
+		tradeLinks = append(tradeLinks, TradeLink{
+			ID:          l.ID,
+			League:      league,
+			SearchID:    searchId,
+			URL:         l.URL,
+			Description: l.Description,
+			Selected:    l.Selected,
+			Status:      "idle",
+		})
+	}
+	return tradeLinks
 }
 
 func (s *Service) StartLiveSearch() []TradeLink {
 	cfg := s.settingsSvc.Get()
 	poeSess := cfg.PoeSessid
 
+	links, err := s.repo.GetTradeLinks()
+	if err != nil {
+		return []TradeLink{}
+	}
+
 	s.mu.Lock()
-	links := append([]TradeLink{}, s.links...)
 	if s.liveSearchCancel != nil {
 		s.liveSearchCancel()
 	}
@@ -118,7 +132,6 @@ func (s *Service) StartLiveSearch() []TradeLink {
 	s.liveSearchCancel = cancel
 	s.mu.Unlock()
 
-	// Filter selected links
 	var selectedLinks []TradeLink
 	for _, link := range links {
 		if link.Selected {
@@ -129,13 +142,11 @@ func (s *Service) StartLiveSearch() []TradeLink {
 		return links
 	}
 
-	//var wg sync.WaitGroup
 	s.liveSearchWG = &sync.WaitGroup{}
 	statusLinks := make([]TradeLink, len(links))
 	copy(statusLinks, links)
 	msgCh := make(chan WSMessage, 100)
 
-	// Worker pool
 	var workerWg sync.WaitGroup
 	for i := 0; i < workerCount; i++ {
 		workerWg.Add(1)
@@ -143,20 +154,16 @@ func (s *Service) StartLiveSearch() []TradeLink {
 			defer workerWg.Done()
 			for msg := range msgCh {
 				log.Printf("Processing message for %s: %s", msg.SearchID, string(msg.Message))
-				// Extend as needed
 			}
 		}()
 	}
 
-	// Launch goroutines only for selected links
 	for i, link := range links {
 		if !link.Selected {
 			continue
 		}
-		//wg.Add(1)
 		s.liveSearchWG.Add(1)
 		go func(idx int, link TradeLink) {
-			//defer wg.Done()
 			defer s.liveSearchWG.Done()
 			conn, resp, err := s.wsClient.Connect(ctx, link, poeSess)
 			if err != nil {
@@ -208,16 +215,11 @@ func (s *Service) StartLiveSearch() []TradeLink {
 			}
 		}(i, link)
 	}
-	//wg.Wait()
 	s.liveSearchWG.Wait()
 	close(msgCh)
 	workerWg.Wait()
 
-	s.mu.Lock()
-	s.links = statusLinks
-	_ = s.repo.Save(statusLinks)
-	s.mu.Unlock()
-
+	//_ = s.repo.Save(statusLinks)
 	return statusLinks
 }
 
@@ -234,11 +236,15 @@ func (s *Service) StopLiveSearch() {
 	s.mu.Unlock()
 }
 
-func (s *Service) UpdateTradeLinks(links []TradeLink) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.links = links
-	_ = s.repo.Save(links)
+//func (s *Service) UpdateTradeLinks(links []TradeLink) {
+//	s.mu.Lock()
+//	defer s.mu.Unlock()
+//	s.links = links
+//	//_ = s.repo.Save(links)
+//}
+
+func (s *Service) UpdateTradeLink(id int, url string, description string, selected bool) error {
+	return s.repo.UpdateTradeLink(id, url, description, selected)
 }
 
 func ParseTradeLink(tradeURL string) (string, string) {

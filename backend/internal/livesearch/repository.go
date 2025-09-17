@@ -1,42 +1,81 @@
-// backend/internal/livesearch/repository.go
 package livesearch
 
-import "github.com/SManriqueDev/poe-tool/backend/internal/settings"
+import (
+	"database/sql"
+	"github.com/SManriqueDev/poe-tool/backend/db"
+)
 
-type TradeLinkRepository struct {
-	settingsSvc *settings.Service
+type LiveSearchSetting struct {
+	ID      int
+	Name    string
+	Enabled bool
 }
 
-func NewTradeLinkRepository(settingsSvc *settings.Service) *TradeLinkRepository {
-	return &TradeLinkRepository{settingsSvc: settingsSvc}
+type Repository struct {
+	db *sql.DB
 }
 
-func (r *TradeLinkRepository) Load() []TradeLink {
-	cfg := r.settingsSvc.Get()
-	links := make([]TradeLink, 0)
-	for _, d := range cfg.DefaultTradeLinks {
-		league, searchId := ParseTradeLink(d.URL)
-		links = append(links, TradeLink{
-			League:      league,
-			SearchID:    searchId,
-			URL:         d.URL,
-			Description: d.Description,
-			Selected:    d.Selected,
-			Status:      "idle",
-		})
+func NewRepository() *Repository {
+	return &Repository{db: db.GetDB()}
+}
+
+func (r *Repository) AddTradeLink(url, description string) error {
+	_, err := r.db.Exec("INSERT INTO trade_links (url, description, selected) VALUES (?, ?, ?)", url, description, boolToInt(false))
+	return err
+}
+
+func (r *Repository) GetTradeLinks() ([]TradeLink, error) {
+	rows, err := r.db.Query("SELECT id, url, description, selected FROM trade_links")
+	if err != nil {
+		return nil, err
 	}
-	return links
+	defer rows.Close()
+	var links []TradeLink
+	for rows.Next() {
+		var l TradeLink
+		if err := rows.Scan(&l.ID, &l.URL, &l.Description, &l.Selected); err != nil {
+			return nil, err
+		}
+		links = append(links, l)
+	}
+	return links, nil
 }
 
-func (r *TradeLinkRepository) Save(links []TradeLink) error {
-	cfg := r.settingsSvc.Get()
-	cfg.DefaultTradeLinks = make([]settings.DefaultTradeLink, 0)
-	for _, l := range links {
-		cfg.DefaultTradeLinks = append(cfg.DefaultTradeLinks, settings.DefaultTradeLink{
-			URL:         l.URL,
-			Description: l.Description,
-			Selected:    l.Selected,
-		})
+func (r *Repository) AddLiveSearchSetting(name string, enabled bool) error {
+	_, err := r.db.Exec("INSERT INTO live_search_settings (name, enabled) VALUES (?, ?)", name, boolToInt(enabled))
+	return err
+}
+
+func (r *Repository) GetLiveSearchSettings() ([]LiveSearchSetting, error) {
+	rows, err := r.db.Query("SELECT id, name, enabled FROM live_search_settings")
+	if err != nil {
+		return nil, err
 	}
-	return r.settingsSvc.Save()
+	defer rows.Close()
+	var settings []LiveSearchSetting
+	for rows.Next() {
+		var s LiveSearchSetting
+		var enabledInt int
+		if err := rows.Scan(&s.ID, &s.Name, &enabledInt); err != nil {
+			return nil, err
+		}
+		s.Enabled = enabledInt == 1
+		settings = append(settings, s)
+	}
+	return settings, nil
+}
+
+func (r *Repository) UpdateTradeLink(id int, url string, description string, selected bool) error {
+	_, err := r.db.Exec(
+		"UPDATE trade_links SET url = ?, description = ?, selected = ? WHERE id = ?",
+		url, description, boolToInt(selected), id,
+	)
+	return err
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

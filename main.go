@@ -2,8 +2,10 @@ package main
 
 import (
 	"embed"
+	"log"
 
 	"github.com/SManriqueDev/poe-tool/backend"
+	"github.com/SManriqueDev/poe-tool/backend/db"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -13,8 +15,13 @@ import (
 var assets embed.FS
 
 func main() {
+	err := db.Init("poe_tool.db")
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+
 	app := backend.NewApp()
-	err := wails.Run(&options.App{
+	err = wails.Run(&options.App{
 		Title:  "Poe Tool",
 		Width:  1024,
 		Height: 768,

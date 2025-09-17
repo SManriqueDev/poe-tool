@@ -18,8 +18,12 @@ func (h *Handler) ListTradeLinks() []TradeLink {
 	return h.svc.ListTradeLinks()
 }
 
-func (h *Handler) UpdateTradeLinks(links []TradeLink) {
-	h.svc.UpdateTradeLinks(links)
+//func (h *Handler) UpdateTradeLinks(links []TradeLink) {
+//	h.svc.UpdateTradeLinks(links)
+//}
+
+func (h *Handler) UpdateTradeLink(id int, url string, description string, selected bool) error {
+	return h.svc.UpdateTradeLink(id, url, description, selected)
 }
 
 func (h *Handler) StartLiveSearch() []TradeLink {

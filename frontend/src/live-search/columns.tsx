@@ -42,7 +42,11 @@ export const getColumns = (actions: ActionsProps): ColumnDef<TradeLink>[] => [
     cell: ({ row }) => (
       <Checkbox
         checked={row.original.selected}
-        onCheckedChange={(checked) => actions.handleSelect(row.index, !!checked)}
+        onCheckedChange={(checked) =>
+      {
+            console.log("Row index:", row.index, "Checked:", checked);
+            actions.handleSelect(row.index, !!checked);
+      }}
       />
     ),
     enableSorting: false,

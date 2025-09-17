@@ -1,6 +1,7 @@
 export namespace livesearch {
 	
 	export class TradeLink {
+	    id: number;
 	    league: string;
 	    searchId: string;
 	    url: string;
@@ -14,6 +15,7 @@ export namespace livesearch {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
 	        this.league = source["league"];
 	        this.searchId = source["searchId"];
 	        this.url = source["url"];

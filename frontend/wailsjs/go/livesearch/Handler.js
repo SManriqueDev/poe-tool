@@ -30,6 +30,6 @@ export function StopLiveSearch() {
   return window['go']['livesearch']['Handler']['StopLiveSearch']();
 }
 
-export function UpdateTradeLinks(arg1) {
-  return window['go']['livesearch']['Handler']['UpdateTradeLinks'](arg1);
+export function UpdateTradeLink(arg1, arg2, arg3, arg4) {
+  return window['go']['livesearch']['Handler']['UpdateTradeLink'](arg1, arg2, arg3, arg4);
 }

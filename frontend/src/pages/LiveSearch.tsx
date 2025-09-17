@@ -8,7 +8,7 @@ import {Label} from "@/components/ui/label";
 import {
     listTradeLinks,
     addTradeLink,
-    updateTradeLinks,
+    updateTradeLink,
     startLiveSearch,
     stopLiveSearch,
     setGoToHideout
@@ -43,7 +43,6 @@ export default function LiveSearch() {
 
         const off = EventsOn("linkStatusChanged", (link: TradeLink) => {
             console.log("Received linkStatusChanged event", link);
-            // Actualiza el estado local según el enlace recibido
             setLinks((prev) => prev.map((l) => (l.searchId === link.searchId ? {...l, ...link} : l)));
         });
         return () => {
@@ -64,7 +63,7 @@ export default function LiveSearch() {
     const handleDelete = async (idx: number) => {
         const updated = links.filter((_, i) => i !== idx);
         setLinks(updated);
-        await updateTradeLinks(updated);
+        // await updateTradeLinks(updated);
         toast("Link deleted!");
     };
 
@@ -75,11 +74,9 @@ export default function LiveSearch() {
     };
 
     const handleSaveEdit = async (idx: number) => {
-        const updated = links.map((l, i) =>
-            i === idx ? {...l, url: editUrl, description: editDescription} : l,
-        );
-        setLinks(updated);
-        await updateTradeLinks(updated);
+        const link = links[idx];
+        await updateTradeLink(link.id, {...link, url: editUrl, description: editDescription} as TradeLink);
+        setLinks(await listTradeLinks());
         setEditIdx(null);
         toast("Link updated!");
     };
@@ -107,9 +104,11 @@ export default function LiveSearch() {
     };
 
     const handleSelect = async (idx: number, selected: boolean) => {
-        const updated = links.map((l, i) => (i === idx ? {...l, selected} : l));
-        setLinks(updated);
-        await updateTradeLinks(updated);
+        const link = links[idx];
+        await updateTradeLink(link.id, {...link, selected} as TradeLink);
+        const updatedLinks = await listTradeLinks();
+        setLinks(updatedLinks);
+
     };
 
     const handleGoToHideoutChange = async (value: boolean) => {
@@ -164,104 +163,9 @@ export default function LiveSearch() {
                     })}
                     data={links}
                 />
-                {/*<Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead />
-              <TableHead>League</TableHead>
-              <TableHead>Search ID</TableHead>
-              <TableHead>URL</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {links.map((link, idx) => (
-              <TableRow key={link.url}>
-                <TableCell>
-                  <Checkbox
-                    checked={link.selected}
-                    onCheckedChange={(checked) => handleSelect(idx, !!checked)}
-                  />
-                </TableCell>
-                <TableCell>{link.league}</TableCell>
-                <TableCell>{link.searchId}</TableCell>
-                <TableCell>
-                  {editIdx === idx ? (
-                    <Input
-                      value={editUrl}
-                      onChange={(e) => setEditUrl(e.target.value)}
-                      className="max-w-xs"
-                    />
-                  ) : (
-                    <span className="truncate max-w-xs">{link.url}</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editIdx === idx ? (
-                    <Input
-                      value={editDescription}
-                      onChange={(e) => setEditDescription(e.target.value)}
-                      className="max-w-xs"
-                    />
-                  ) : (
-                    <span className="truncate max-w-xs">{link.description}</span>
-                  )}
-                </TableCell>
-                <TableCell>{link.status}</TableCell>
-                 <TableCell>
-                  {editIdx === idx ? (
-                    <>
-                      <Button size="sm" onClick={() => handleSaveEdit(idx)}>
-                        Save
-                      </Button>
-                      <Button size="sm" variant="secondary" onClick={handleCancelEdit}>
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <Button size="sm" variant="secondary" onClick={() => handleEdit(idx)}>
-                      Edit
-                    </Button>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editIdx === idx ? (
-                    <>
-                      <Button size="sm" onClick={() => handleSaveEdit(idx)}>
-                        Save
-                      </Button>
-                      <Button size="sm" variant="secondary" onClick={handleCancelEdit}>
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button size="sm" variant="secondary" onClick={() => handleEdit(idx)}>
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="ml-2"
-                        onClick={() => handleDelete(idx)}
-                        aria-label="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>*/}
+
             </CardContent>
             <CardFooter>
-                {/*<Button className="w-full" onClick={handleStart}>
-          Start Live Search
-        </Button>*/}
                 {isLiveSearchRunning ? (
                     <Button className="w-full" variant="destructive" onClick={handleStop}>
                         Stop Live Search

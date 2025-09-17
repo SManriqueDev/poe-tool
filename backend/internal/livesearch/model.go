@@ -1,6 +1,7 @@
 package livesearch
 
 type TradeLink struct {
+	ID          int    `json:"id"`
 	League      string `json:"league"`
 	SearchID    string `json:"searchId"`
 	URL         string `json:"url"`

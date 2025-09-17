@@ -17,4 +17,4 @@ export function StartLiveSearch():Promise<Array<livesearch.TradeLink>>;
 
 export function StopLiveSearch():Promise<void>;
 
-export function UpdateTradeLinks(arg1:Array<livesearch.TradeLink>):Promise<void>;
+export function UpdateTradeLink(arg1:number,arg2:string,arg3:string,arg4:boolean):Promise<void>;
