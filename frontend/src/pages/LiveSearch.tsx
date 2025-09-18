@@ -43,7 +43,7 @@ export default function LiveSearch() {
 
         const off = EventsOn("linkStatusChanged", (link: TradeLink) => {
             console.log("Received linkStatusChanged event", link);
-            setLinks((prev) => prev.map((l) => (l.searchId === link.searchId ? {...l, ...link} : l)));
+            setLinks((prev) => prev.map((l) => (l.id === link.id ? {...l, ...link} : l)));
         });
         return () => {
             off();

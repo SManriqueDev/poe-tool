@@ -3,6 +3,7 @@ package livesearch
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"net/url"
 
@@ -20,8 +21,9 @@ func (c *WebSocketClient) Connect(ctx context.Context, link TradeLink, poeSess s
 	wsURL := url.URL{
 		Scheme: "wss",
 		Host:   "www.pathofexile.com",
-		Path:   "/api/trade2/live/poe2/" + link.League + "/" + link.SearchID,
+		Path:   "/api/trade2/live/poe2/" + link.League() + "/" + link.SearchID(),
 	}
+	log.Println("Connecting to WebSocket URL:", wsURL.String())
 	header := http.Header{}
 	header.Set("Cookie", "POESESSID="+poeSess)
 	header.Set("Origin", "https://www.pathofexile.com")

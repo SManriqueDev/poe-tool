@@ -2,8 +2,6 @@ export namespace livesearch {
 	
 	export class TradeLink {
 	    id: number;
-	    league: string;
-	    searchId: string;
 	    url: string;
 	    description: string;
 	    selected: boolean;
@@ -16,12 +14,34 @@ export namespace livesearch {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
-	        this.league = source["league"];
-	        this.searchId = source["searchId"];
 	        this.url = source["url"];
 	        this.description = source["description"];
 	        this.selected = source["selected"];
 	        this.status = source["status"];
+	    }
+	}
+	export class TradeLinkDTO {
+	    id: number;
+	    url: string;
+	    description: string;
+	    selected: boolean;
+	    status: string;
+	    league: string;
+	    searchId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TradeLinkDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.url = source["url"];
+	        this.description = source["description"];
+	        this.selected = source["selected"];
+	        this.status = source["status"];
+	        this.league = source["league"];
+	        this.searchId = source["searchId"];
 	    }
 	}
 

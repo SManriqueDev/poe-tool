@@ -4,8 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"net/url"
-	"strings"
+
 	"sync"
 
 	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
@@ -93,26 +92,29 @@ func (s *Service) AddTradeLink(url string, description string) {
 	_ = s.repo.AddTradeLink(link.URL, link.Description)
 }
 
-func (s *Service) ListTradeLinks() []TradeLink {
+func (s *Service) ListTradeLinks() []TradeLinkDTO {
 	links, err := s.repo.GetTradeLinks()
 	if err != nil {
-		return []TradeLink{}
+		return []TradeLinkDTO{}
 	}
 
-	var tradeLinks []TradeLink
+	//var tradeLinks []TradeLink
+	var dtos []TradeLinkDTO
+
 	for _, l := range links {
-		league, searchId := ParseTradeLink(l.URL)
-		tradeLinks = append(tradeLinks, TradeLink{
+
+		dtos = append(dtos, TradeLinkDTO{
 			ID:          l.ID,
-			League:      league,
-			SearchID:    searchId,
+			League:      l.League(),
+			SearchID:    l.SearchID(),
 			URL:         l.URL,
 			Description: l.Description,
 			Selected:    l.Selected,
 			Status:      "idle",
 		})
 	}
-	return tradeLinks
+	return dtos
+	//return append([]TradeLink{}, tradeLinks...)
 }
 
 func (s *Service) StartLiveSearch() []TradeLink {
@@ -165,8 +167,16 @@ func (s *Service) StartLiveSearch() []TradeLink {
 		s.liveSearchWG.Add(1)
 		go func(idx int, link TradeLink) {
 			defer s.liveSearchWG.Done()
+
+			// parse trade link to get league and search ID
+			//if link.League == "" || link.SearchID == "" {
+			//	league, searchId := ParseTradeLink(link.URL)
+			//	link.League = league
+			//	link.SearchID = searchId
+			//}
 			conn, resp, err := s.wsClient.Connect(ctx, link, poeSess)
 			if err != nil {
+				log.Printf("WebSocket connection error for %s: %v", link.URL, err)
 				if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 					statusLinks[idx].Status = "auth_error"
 					s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
@@ -207,7 +217,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 						return
 					}
 					select {
-					case msgCh <- WSMessage{SearchID: link.SearchID, Message: message}:
+					case msgCh <- WSMessage{SearchID: link.SearchID(), Message: message}:
 					default:
 						log.Printf("msgCh full, dropping message for %s", link.SearchID)
 					}
@@ -247,17 +257,17 @@ func (s *Service) UpdateTradeLink(id int, url string, description string, select
 	return s.repo.UpdateTradeLink(id, url, description, selected)
 }
 
-func ParseTradeLink(tradeURL string) (string, string) {
-	u, err := url.Parse(tradeURL)
-	if err != nil {
-		return "", ""
-	}
-	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
-	if len(parts) < 2 {
-		return "", ""
-	}
-	return parts[len(parts)-2], parts[len(parts)-1]
-}
+//func ParseTradeLink(tradeURL string) (string, string) {
+//	u, err := url.Parse(tradeURL)
+//	if err != nil {
+//		return "", ""
+//	}
+//	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+//	if len(parts) < 2 {
+//		return "", ""
+//	}
+//	return parts[len(parts)-2], parts[len(parts)-1]
+//}
 
 func (s *Service) SetGoToHideout(value bool) error {
 	cfg := s.settingsSvc.Get()

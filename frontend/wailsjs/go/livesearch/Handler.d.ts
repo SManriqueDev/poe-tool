@@ -7,7 +7,7 @@ export function AddTradeLink(arg1:string,arg2:string):Promise<void>;
 
 export function GetGoToHideout():Promise<boolean>;
 
-export function ListTradeLinks():Promise<Array<livesearch.TradeLink>>;
+export function ListTradeLinks():Promise<Array<livesearch.TradeLinkDTO>>;
 
 export function SetContext(arg1:context.Context):Promise<void>;
 
