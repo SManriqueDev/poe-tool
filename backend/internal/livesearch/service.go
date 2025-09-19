@@ -224,9 +224,12 @@ func (s *Service) StopLiveSearch() {
 		s.liveSearchCancel()
 		s.liveSearchCancel = nil
 	}
-	for i := range s.links {
-		s.links[i].Status = "idle"
-		s.eventBus.EmitStatusUpdate(s.ctx, s.links[i])
+	links, err := s.repo.GetTradeLinks()
+	if err == nil {
+		for _, link := range links {
+			link.Status = "idle"
+			s.eventBus.EmitStatusUpdate(s.ctx, link)
+		}
 	}
 	s.mu.Unlock()
 }
