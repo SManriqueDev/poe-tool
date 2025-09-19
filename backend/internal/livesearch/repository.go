@@ -2,6 +2,7 @@ package livesearch
 
 import (
 	"database/sql"
+
 	"github.com/SManriqueDev/poe-tool/backend/db"
 )
 
@@ -30,12 +31,15 @@ func (r *Repository) GetTradeLinks() ([]TradeLink, error) {
 		return nil, err
 	}
 	defer rows.Close()
+
 	var links []TradeLink
 	for rows.Next() {
 		var l TradeLink
 		if err := rows.Scan(&l.ID, &l.URL, &l.Description, &l.Selected); err != nil {
 			return nil, err
 		}
+		// asignar valor por defecto al status
+		l.Status = "idle"
 		links = append(links, l)
 	}
 	return links, nil

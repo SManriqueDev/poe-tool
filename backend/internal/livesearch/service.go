@@ -87,6 +87,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 		return []TradeLink{}
 	}
 
+	// Cancelar búsqueda previa si estaba corriendo
 	s.mu.Lock()
 	if s.liveSearchCancel != nil {
 		s.liveSearchCancel()
@@ -95,6 +96,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 	s.liveSearchCancel = cancel
 	s.mu.Unlock()
 
+	// Filtrar links seleccionados
 	var selectedLinks []TradeLink
 	for _, link := range links {
 		if link.Selected {
@@ -105,11 +107,16 @@ func (s *Service) StartLiveSearch() []TradeLink {
 		return links
 	}
 
-	s.liveSearchWG = &sync.WaitGroup{}
+	// Copia inicial de los links
 	statusLinks := make([]TradeLink, len(links))
 	copy(statusLinks, links)
-	msgCh := make(chan WSMessage, 100)
 
+	// Canal para mensajes de sockets
+	msgCh := make(chan WSMessage, 500)
+	// Canal para actualizaciones de estado
+	statusCh := make(chan func(), 100)
+
+	// Workers para mensajes
 	var workerWg sync.WaitGroup
 	for i := 0; i < workerCount; i++ {
 		workerWg.Add(1)
@@ -121,6 +128,16 @@ func (s *Service) StartLiveSearch() []TradeLink {
 		}()
 	}
 
+	// Goroutine única para manejar actualizaciones de estado
+	go func() {
+		for update := range statusCh {
+			update()
+		}
+	}()
+
+	// WaitGroup de conexiones
+	s.liveSearchWG = &sync.WaitGroup{}
+
 	for i, link := range links {
 		if !link.Selected {
 			continue
@@ -128,61 +145,77 @@ func (s *Service) StartLiveSearch() []TradeLink {
 		s.liveSearchWG.Add(1)
 		go func(idx int, link TradeLink) {
 			defer s.liveSearchWG.Done()
+
 			conn, resp, err := s.wsClient.Connect(ctx, link, poeSess)
 			if err != nil {
 				log.Printf("WebSocket connection error for %s: %v", link.URL, err)
-				if resp != nil && resp.StatusCode == http.StatusUnauthorized {
-					statusLinks[idx].Status = "auth_error"
+				statusCh <- func() {
+					if resp != nil && resp.StatusCode == http.StatusUnauthorized {
+						statusLinks[idx].Status = "auth_error"
+					} else {
+						statusLinks[idx].Status = "error"
+					}
 					s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
-				} else {
-					statusLinks[idx].Status = "error"
 				}
 				return
 			}
-			defer conn.Close()
 
+			defer func() {
+				_ = conn.Close()
+			}()
+
+			// Autenticación inicial
 			var authResp struct {
 				Auth bool `json:"auth"`
 			}
 			if err := conn.ReadJSON(&authResp); err != nil || !authResp.Auth {
-				statusLinks[idx].Status = "auth_error"
-				s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
+				statusCh <- func() {
+					statusLinks[idx].Status = "auth_error"
+					s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
+				}
 				return
 			}
 
-			select {
-			case <-ctx.Done():
-				return
-			default:
+			// OK → actualizar estado
+			statusCh <- func() {
 				statusLinks[idx].Status = "ok"
 				s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 			}
 
+			// Bucle de lectura
 			for {
 				select {
 				case <-ctx.Done():
-					statusLinks[idx].Status = "idle"
-					s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
+					statusCh <- func() {
+						statusLinks[idx].Status = "idle"
+						s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
+					}
 					return
 				default:
 					_, message, err := conn.ReadMessage()
 					if err != nil {
-						log.Printf("WebSocket read error: %v", err)
+						log.Printf("WebSocket read error for %s: %v", link.URL, err)
 						return
 					}
 					select {
 					case msgCh <- WSMessage{SearchID: link.SearchID(), Message: message}:
 					default:
-						log.Printf("msgCh full, dropping message for %s", link.SearchID)
+						log.Printf("msgCh full, dropping message for %s", link.SearchID())
 					}
 				}
 			}
 		}(i, link)
 	}
-	s.liveSearchWG.Wait()
-	close(msgCh)
-	workerWg.Wait()
 
+	// Goroutine para limpiar al terminar todas las conexiones
+	go func() {
+		s.liveSearchWG.Wait()
+		close(msgCh) // cerrar workers
+		workerWg.Wait()
+		close(statusCh) // cerrar actualizador de estado
+	}()
+
+	// Retornar inmediatamente (queda corriendo en background)
 	return statusLinks
 }
 
