@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 const workerCount = 10 // Number of concurrent workers
@@ -44,19 +43,15 @@ func NewService(settingsSvc *settings.Service) *Service {
 	}
 }
 
-func (s *Service) broadcastStatusUpdate(link TradeLink) {
-	if s.ctx != nil {
-		runtime.EventsEmit(s.ctx, "linkStatusChanged", link)
-	}
-}
+// func (s *Service) broadcastStatusUpdate(link TradeLink) {
+// 	if s.ctx != nil {
+// 		runtime.EventsEmit(s.ctx, "linkStatusChanged", link)
+// 	}
+// }
 
 func (s *Service) AddTradeLink(url string, description string) {
-	link := TradeLink{
-		URL:         url,
-		Description: description,
-		Status:      "idle",
-	}
-	s.links = append(s.links, link)
+	link := NewIdleTradeLink(url, description)
+	s.links = append(s.links, *link)
 	_ = s.repo.AddTradeLink(link.URL, link.Description)
 }
 
@@ -65,18 +60,38 @@ func (s *Service) ListTradeLinks() []TradeLink {
 	if err != nil {
 		return []TradeLink{}
 	}
+
 	var tradeLinks []TradeLink
 	for _, l := range links {
-		tradeLinks = append(tradeLinks, TradeLink{
-			ID:          l.ID,
-			URL:         l.URL,
-			Description: l.Description,
-			Selected:    l.Selected,
-			Status:      "idle",
-		})
+		tl := NewTradeLink(
+			WithID(l.ID),
+			WithURL(l.URL),
+			WithDescription(l.Description),
+			WithSelected(l.Selected),
+			WithStatus("idle"),
+		)
+		tradeLinks = append(tradeLinks, *tl)
 	}
-	return append([]TradeLink{}, tradeLinks...)
+	return tradeLinks
 }
+
+// func (s *Service) ListTradeLinks() []TradeLink {
+// 	links, err := s.repo.GetTradeLinks()
+// 	if err != nil {
+// 		return []TradeLink{}
+// 	}
+// 	var tradeLinks []TradeLink
+// 	for _, l := range links {
+// 		tradeLinks = append(tradeLinks, TradeLink{
+// 			ID:          l.ID,
+// 			URL:         l.URL,
+// 			Description: l.Description,
+// 			Selected:    l.Selected,
+// 			Status:      "idle",
+// 		})
+// 	}
+// 	return append([]TradeLink{}, tradeLinks...)
+// }
 
 func (s *Service) StartLiveSearch() []TradeLink {
 	cfg := s.settingsSvc.Get()
