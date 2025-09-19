@@ -92,29 +92,22 @@ func (s *Service) AddTradeLink(url string, description string) {
 	_ = s.repo.AddTradeLink(link.URL, link.Description)
 }
 
-func (s *Service) ListTradeLinks() []TradeLinkDTO {
+func (s *Service) ListTradeLinks() []TradeLink {
 	links, err := s.repo.GetTradeLinks()
 	if err != nil {
-		return []TradeLinkDTO{}
+		return []TradeLink{}
 	}
-
-	//var tradeLinks []TradeLink
-	var dtos []TradeLinkDTO
-
+	var tradeLinks []TradeLink
 	for _, l := range links {
-
-		dtos = append(dtos, TradeLinkDTO{
+		tradeLinks = append(tradeLinks, TradeLink{
 			ID:          l.ID,
-			League:      l.League(),
-			SearchID:    l.SearchID(),
 			URL:         l.URL,
 			Description: l.Description,
 			Selected:    l.Selected,
 			Status:      "idle",
 		})
 	}
-	return dtos
-	//return append([]TradeLink{}, tradeLinks...)
+	return append([]TradeLink{}, tradeLinks...)
 }
 
 func (s *Service) StartLiveSearch() []TradeLink {
@@ -167,13 +160,6 @@ func (s *Service) StartLiveSearch() []TradeLink {
 		s.liveSearchWG.Add(1)
 		go func(idx int, link TradeLink) {
 			defer s.liveSearchWG.Done()
-
-			// parse trade link to get league and search ID
-			//if link.League == "" || link.SearchID == "" {
-			//	league, searchId := ParseTradeLink(link.URL)
-			//	link.League = league
-			//	link.SearchID = searchId
-			//}
 			conn, resp, err := s.wsClient.Connect(ctx, link, poeSess)
 			if err != nil {
 				log.Printf("WebSocket connection error for %s: %v", link.URL, err)
@@ -229,7 +215,6 @@ func (s *Service) StartLiveSearch() []TradeLink {
 	close(msgCh)
 	workerWg.Wait()
 
-	//_ = s.repo.Save(statusLinks)
 	return statusLinks
 }
 
@@ -246,28 +231,9 @@ func (s *Service) StopLiveSearch() {
 	s.mu.Unlock()
 }
 
-//func (s *Service) UpdateTradeLinks(links []TradeLink) {
-//	s.mu.Lock()
-//	defer s.mu.Unlock()
-//	s.links = links
-//	//_ = s.repo.Save(links)
-//}
-
 func (s *Service) UpdateTradeLink(id int, url string, description string, selected bool) error {
 	return s.repo.UpdateTradeLink(id, url, description, selected)
 }
-
-//func ParseTradeLink(tradeURL string) (string, string) {
-//	u, err := url.Parse(tradeURL)
-//	if err != nil {
-//		return "", ""
-//	}
-//	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
-//	if len(parts) < 2 {
-//		return "", ""
-//	}
-//	return parts[len(parts)-2], parts[len(parts)-1]
-//}
 
 func (s *Service) SetGoToHideout(value bool) error {
 	cfg := s.settingsSvc.Get()

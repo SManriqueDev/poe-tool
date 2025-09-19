@@ -1,18 +1,17 @@
 package livesearch
 
 import (
+	"encoding/json"
 	"net/url"
 	"strings"
 )
 
 type TradeLink struct {
-	ID int `json:"id"`
-	//League      string `json:"league"`
-	//SearchID    string `json:"searchId"`
+	ID          int    `json:"id"`
 	URL         string `json:"url"`
 	Description string `json:"description"`
 	Selected    bool   `json:"selected"`
-	Status      string `json:"status"` // e.g., "connected", "auth", "error"
+	Status      string `json:"status"` // e.g., "connected", "auth-error", "error"
 }
 
 func (t *TradeLink) League() string {
@@ -39,24 +38,15 @@ func (t *TradeLink) SearchID() string {
 	return parts[len(parts)-1]
 }
 
-type TradeLinkDTO struct {
-	ID          int    `json:"id"`
-	URL         string `json:"url"`
-	Description string `json:"description"`
-	Selected    bool   `json:"selected"`
-	Status      string `json:"status"`
-	League      string `json:"league"`
-	SearchID    string `json:"searchId"`
-}
-
-func toDTO(link TradeLink) TradeLinkDTO {
-	return TradeLinkDTO{
-		ID:          link.ID,
-		URL:         link.URL,
-		Description: link.Description,
-		Selected:    link.Selected,
-		Status:      link.Status,
-		League:      link.League(),
-		SearchID:    link.SearchID(),
-	}
+func (t *TradeLink) MarshalJSON() ([]byte, error) {
+	type Alias TradeLink
+	return json.Marshal(&struct {
+		Alias
+		League   string `json:"league"`
+		SearchID string `json:"searchId"`
+	}{
+		Alias:    (Alias)(*t),
+		League:   t.League(),
+		SearchID: t.SearchID(),
+	})
 }

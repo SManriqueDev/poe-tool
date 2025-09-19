@@ -14,7 +14,7 @@ func (h *Handler) AddTradeLink(url string, description string) {
 	h.svc.AddTradeLink(url, description)
 }
 
-func (h *Handler) ListTradeLinks() []TradeLinkDTO {
+func (h *Handler) ListTradeLinks() []TradeLink {
 	return h.svc.ListTradeLinks()
 }
 
