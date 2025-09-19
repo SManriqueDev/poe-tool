@@ -44,37 +44,6 @@ func NewService(settingsSvc *settings.Service) *Service {
 	}
 }
 
-//func (s *Service) LoadLinksFromConfig() {
-//	cfg := s.settingsSvc.Get()
-//	s.mu.Lock()
-//	defer s.mu.Unlock()
-//	s.links = make([]TradeLink, 0)
-//	for _, d := range cfg.DefaultTradeLinks {
-//		league, searchId := ParseTradeLink(d.URL)
-//		s.links = append(s.links, TradeLink{
-//			League:      league,
-//			SearchID:    searchId,
-//			URL:         d.URL,
-//			Description: d.Description,
-//			Selected:    d.Selected,
-//			Status:      "idle",
-//		})
-//	}
-//}
-
-//func (s *Service) SaveLinksToConfig() error {
-//	cfg := s.settingsSvc.Get()
-//	cfg.DefaultTradeLinks = make([]settings.DefaultTradeLink, 0)
-//	for _, l := range s.links {
-//		cfg.DefaultTradeLinks = append(cfg.DefaultTradeLinks, settings.DefaultTradeLink{
-//			URL:         l.URL,
-//			Description: l.Description,
-//			Selected:    l.Selected,
-//		})
-//	}
-//	return s.settingsSvc.Save()
-//}
-
 func (s *Service) broadcastStatusUpdate(link TradeLink) {
 	if s.ctx != nil {
 		runtime.EventsEmit(s.ctx, "linkStatusChanged", link)
@@ -88,7 +57,6 @@ func (s *Service) AddTradeLink(url string, description string) {
 		Status:      "idle",
 	}
 	s.links = append(s.links, link)
-	log.Printf("Added trade link: %s", url)
 	_ = s.repo.AddTradeLink(link.URL, link.Description)
 }
 
