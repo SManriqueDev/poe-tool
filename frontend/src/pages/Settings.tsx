@@ -1,5 +1,3 @@
-import { useEffect, useId, useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { loadConfig, saveConfig } from "@/services/configService";
+import { useEffect, useId, useState } from "react";
+import { toast } from "sonner";
 import { settings } from "../../wailsjs/go/models";
 
 import Config = settings.Config;
