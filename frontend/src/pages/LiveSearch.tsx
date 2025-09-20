@@ -25,6 +25,7 @@ import {
 	stopLiveSearch,
 	updateTradeLink,
 } from "@/services/liveSearchService";
+
 import { livesearch } from "~wails/go/models";
 import { EventsOn } from "~wails/runtime";
 
