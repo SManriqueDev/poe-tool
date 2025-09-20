@@ -72,7 +72,7 @@ func (s *Service) ListTradeLinks() []TradeLink {
 		)
 		tradeLinks = append(tradeLinks, *tl)
 	}
-	return tradeLinks
+	return append([]TradeLink{}, tradeLinks...)
 }
 
 // func (s *Service) ListTradeLinks() []TradeLink {
@@ -258,4 +258,8 @@ func (s *Service) SetGoToHideout(value bool) error {
 	cfg := s.settingsSvc.Get()
 	cfg.GoToHideout = value
 	return s.settingsSvc.Save()
+}
+
+func (s *Service) DeleteTradeLink(id int) error {
+	return s.repo.DeleteTradeLink(id)
 }

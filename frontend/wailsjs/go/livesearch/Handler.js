@@ -6,6 +6,10 @@ export function AddTradeLink(arg1, arg2) {
   return window['go']['livesearch']['Handler']['AddTradeLink'](arg1, arg2);
 }
 
+export function DeleteTradeLink(arg1) {
+  return window['go']['livesearch']['Handler']['DeleteTradeLink'](arg1);
+}
+
 export function GetGoToHideout() {
   return window['go']['livesearch']['Handler']['GetGoToHideout']();
 }

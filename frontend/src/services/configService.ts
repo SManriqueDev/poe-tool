@@ -1,5 +1,5 @@
-import { LoadConfig, SaveConfig } from "../../wailsjs/go/settings/Handler";
 import { settings } from "../../wailsjs/go/models";
+import { LoadConfig, SaveConfig } from "../../wailsjs/go/settings/Handler";
 import Config = settings.Config;
 
 export async function loadConfig(): Promise<Config> {

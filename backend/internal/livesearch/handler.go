@@ -46,3 +46,7 @@ func (h *Handler) GetGoToHideout() bool {
 	cfg := h.svc.settingsSvc.Get()
 	return cfg.GoToHideout
 }
+
+func (h *Handler) DeleteTradeLink(id int) error {
+	return h.svc.DeleteTradeLink(id)
+}

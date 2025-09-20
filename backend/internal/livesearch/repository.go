@@ -26,32 +26,32 @@ func (r *Repository) AddTradeLink(url, description string) error {
 }
 
 func (r *Repository) GetTradeLinks() ([]TradeLink, error) {
-    rows, err := r.db.Query("SELECT id, url, description, selected FROM trade_links")
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
+	rows, err := r.db.Query("SELECT id, url, description, selected FROM trade_links")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-    var links []TradeLink
-    for rows.Next() {
-        var id int
-        var url, description string
-        var selected bool
-        
-        if err := rows.Scan(&id, &url, &description, &selected); err != nil {
-            return nil, err
-        }
-        
-        tl := NewTradeLink(
-            WithID(id),
-            WithURL(url),
-            WithDescription(description),
-            WithSelected(selected),
-            WithStatus("idle"),
-        )
-        links = append(links, *tl)
-    }
-    return links, nil
+	var links []TradeLink
+	for rows.Next() {
+		var id int
+		var url, description string
+		var selected bool
+
+		if err := rows.Scan(&id, &url, &description, &selected); err != nil {
+			return nil, err
+		}
+
+		tl := NewTradeLink(
+			WithID(id),
+			WithURL(url),
+			WithDescription(description),
+			WithSelected(selected),
+			WithStatus("idle"),
+		)
+		links = append(links, *tl)
+	}
+	return links, nil
 }
 
 func (r *Repository) AddLiveSearchSetting(name string, enabled bool) error {
@@ -82,6 +82,13 @@ func (r *Repository) UpdateTradeLink(id int, url string, description string, sel
 	_, err := r.db.Exec(
 		"UPDATE trade_links SET url = ?, description = ?, selected = ? WHERE id = ?",
 		url, description, boolToInt(selected), id,
+	)
+	return err
+}
+
+func (r *Repository) DeleteTradeLink(id int) error {
+	_, err := r.db.Exec("DELETE FROM trade_links WHERE id = ?",
+		id,
 	)
 	return err
 }

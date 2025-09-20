@@ -5,6 +5,8 @@ import {context} from '../models';
 
 export function AddTradeLink(arg1:string,arg2:string):Promise<void>;
 
+export function DeleteTradeLink(arg1:number):Promise<void>;
+
 export function GetGoToHideout():Promise<boolean>;
 
 export function ListTradeLinks():Promise<Array<livesearch.TradeLink>>;

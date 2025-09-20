@@ -1,8 +1,8 @@
-import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Trash2 } from "lucide-react";
 import React from "react";
 import { livesearch } from "../../wailsjs/go/models";
 
@@ -33,7 +33,9 @@ export const getColumns = (actions: ActionsProps): ColumnDef<TradeLink>[] => [
         <Checkbox
           checked={allSelected ? true : someSelected ? "indeterminate" : false}
           onCheckedChange={(value) => {
-            actions.data.forEach((_, idx) => actions.handleSelect(idx, !!value));
+            actions.data.forEach((_, idx) => {
+              actions.handleSelect(idx, !!value);
+            });
           }}
           aria-label="Select all"
         />
@@ -42,11 +44,10 @@ export const getColumns = (actions: ActionsProps): ColumnDef<TradeLink>[] => [
     cell: ({ row }) => (
       <Checkbox
         checked={row.original.selected}
-        onCheckedChange={(checked) =>
-      {
-            console.log("Row index:", row.index, "Checked:", checked);
-            actions.handleSelect(row.index, !!checked);
-      }}
+        onCheckedChange={(checked) => {
+          console.log("Row index:", row.index, "Checked:", checked);
+          actions.handleSelect(row.index, !!checked);
+        }}
       />
     ),
     enableSorting: false,
@@ -59,7 +60,7 @@ export const getColumns = (actions: ActionsProps): ColumnDef<TradeLink>[] => [
   {
     accessorKey: "league",
     header: "League",
-    cell: ({ row, getValue }) => (
+    cell: ({ getValue }) => (
       <span
         className="block max-w-[100px] overflow-hidden whitespace-nowrap text-ellipsis"
         title={getValue() as string}
