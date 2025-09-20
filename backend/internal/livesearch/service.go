@@ -29,6 +29,8 @@ type Service struct {
 	wsClient         *WebSocketClient
 	eventBus         EventBus
 	liveSearchWG     *sync.WaitGroup
+	linkStatuses     map[int]string // In-memory storage for current link statuses
+	statusMu         sync.RWMutex   // Separate mutex for status operations
 }
 
 type WSMessage struct {
@@ -215,12 +217,13 @@ func (s *Service) logNewItem(item ItemResult, searchID string, tradeLink *TradeL
 
 func NewService(settingsSvc *settings.Service, loggingSvc *logging.Service) *Service {
 	s := &Service{
-		links:       make([]TradeLink, 0),
-		settingsSvc: settingsSvc,
-		loggingSvc:  loggingSvc,
-		repo:        NewRepository(),
-		wsClient:    NewWebSocketClient(),
-		eventBus:    &WailsEventBus{},
+		links:        make([]TradeLink, 0),
+		settingsSvc:  settingsSvc,
+		loggingSvc:   loggingSvc,
+		repo:         NewRepository(),
+		wsClient:     NewWebSocketClient(),
+		eventBus:     &WailsEventBus{},
+		linkStatuses: make(map[int]string),
 	}
 
 	// Initialize go_to_hideout setting with default value false if it doesn't exist
@@ -368,8 +371,10 @@ func (s *Service) StartLiveSearch() []TradeLink {
 				statusCh <- func() {
 					if resp != nil && resp.StatusCode == http.StatusUnauthorized {
 						statusLinks[idx].Status = "auth_error"
+						s.UpdateLinkStatus(statusLinks[idx].ID, "auth_error")
 					} else {
 						statusLinks[idx].Status = "error"
+						s.UpdateLinkStatus(statusLinks[idx].ID, "error")
 					}
 					s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 				}
@@ -387,6 +392,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 			if err := conn.ReadJSON(&authResp); err != nil || !authResp.Auth {
 				statusCh <- func() {
 					statusLinks[idx].Status = "auth_error"
+					s.UpdateLinkStatus(statusLinks[idx].ID, "auth_error")
 					s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 				}
 				return
@@ -395,6 +401,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 			// OK → actualizar estado
 			statusCh <- func() {
 				statusLinks[idx].Status = "ok"
+				s.UpdateLinkStatus(statusLinks[idx].ID, "ok")
 				s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 			}
 
@@ -404,6 +411,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 				case <-ctx.Done():
 					statusCh <- func() {
 						statusLinks[idx].Status = "idle"
+						s.UpdateLinkStatus(statusLinks[idx].ID, "idle")
 						s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 					}
 					return
@@ -435,6 +443,12 @@ func (s *Service) StartLiveSearch() []TradeLink {
 	return statusLinks
 }
 
+func (s *Service) IsLiveSearchRunning() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.liveSearchCancel != nil
+}
+
 func (s *Service) StopLiveSearch() {
 	s.mu.Lock()
 	if s.liveSearchCancel != nil {
@@ -445,6 +459,7 @@ func (s *Service) StopLiveSearch() {
 	if err == nil {
 		for _, link := range links {
 			link.Status = "idle"
+			s.UpdateLinkStatus(link.ID, "idle")
 			s.eventBus.EmitStatusUpdate(s.ctx, link)
 		}
 	}
@@ -465,4 +480,42 @@ func (s *Service) SetGoToHideout(enabled bool) error {
 
 func (s *Service) GetGoToHideout() (bool, error) {
 	return s.repo.GetLiveSearchSetting("go_to_hideout")
+}
+
+// UpdateLinkStatus updates the status of a link in memory
+func (s *Service) UpdateLinkStatus(linkID int, status string) {
+	s.statusMu.Lock()
+	defer s.statusMu.Unlock()
+	s.linkStatuses[linkID] = status
+}
+
+// GetLinkStatus gets the status of a specific link
+func (s *Service) GetLinkStatus(linkID int) string {
+	s.statusMu.RLock()
+	defer s.statusMu.RUnlock()
+	status, exists := s.linkStatuses[linkID]
+	if !exists {
+		return "idle"
+	}
+	return status
+}
+
+// GetAllLinkStatuses returns a map of all current link statuses
+func (s *Service) GetAllLinkStatuses() map[int]string {
+	s.statusMu.RLock()
+	defer s.statusMu.RUnlock()
+	
+	// Create a copy to avoid race conditions
+	statuses := make(map[int]string)
+	for id, status := range s.linkStatuses {
+		statuses[id] = status
+	}
+	return statuses
+}
+
+// ClearLinkStatuses resets all link statuses to idle
+func (s *Service) ClearLinkStatuses() {
+	s.statusMu.Lock()
+	defer s.statusMu.Unlock()
+	s.linkStatuses = make(map[int]string)
 }

@@ -49,3 +49,11 @@ func (h *Handler) SetGoToHideout(enabled bool) error {
 func (h *Handler) GetGoToHideout() (bool, error) {
 	return h.svc.GetGoToHideout()
 }
+
+func (h *Handler) IsLiveSearchRunning() bool {
+	return h.svc.IsLiveSearchRunning()
+}
+
+func (h *Handler) GetAllLinkStatuses() map[int]string {
+	return h.svc.GetAllLinkStatuses()
+}

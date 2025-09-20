@@ -10,8 +10,16 @@ export function DeleteTradeLink(arg1) {
   return window['go']['livesearch']['Handler']['DeleteTradeLink'](arg1);
 }
 
+export function GetAllLinkStatuses() {
+  return window['go']['livesearch']['Handler']['GetAllLinkStatuses']();
+}
+
 export function GetGoToHideout() {
   return window['go']['livesearch']['Handler']['GetGoToHideout']();
+}
+
+export function IsLiveSearchRunning() {
+  return window['go']['livesearch']['Handler']['IsLiveSearchRunning']();
 }
 
 export function ListTradeLinks() {

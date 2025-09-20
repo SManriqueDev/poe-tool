@@ -28,7 +28,9 @@ import { DataTable } from "@/live-search/data-table";
 import {
 	addTradeLink,
 	deleteTradeLink,
+	getAllLinkStatuses,
 	getGoToHideout,
+	isLiveSearchRunning as checkLiveSearchStatus,
 	listTradeLinks,
 	setGoToHideout,
 	startLiveSearch,
@@ -99,10 +101,37 @@ export default function LiveSearch() {
 	};
 
 	useEffect(() => {
-		listTradeLinks().then((links) => {
-			console.log("Fetched trade links", links);
-			setLinks(links);
-		});
+		// Load trade links and their current statuses
+		Promise.all([listTradeLinks(), getAllLinkStatuses()])
+			.then(([links, statuses]) => {
+				console.log("Fetched trade links", links);
+				console.log("Fetched link statuses", statuses);
+				
+				// Apply statuses to links
+				const linksWithStatus = links.map(link => ({
+					...link,
+					status: statuses[link.id] || link.status || "idle"
+				}));
+				
+				setLinks(linksWithStatus);
+			})
+			.catch((error) => {
+				console.error("Failed to load trade links or statuses:", error);
+				// Fallback to just loading links
+				listTradeLinks().then((links) => {
+					console.log("Fetched trade links (fallback)", links);
+					setLinks(links);
+				});
+			});
+
+		// Check current live search status from backend
+		checkLiveSearchStatus()
+			.then((running) => {
+				setIsLiveSearchRunning(running);
+			})
+			.catch((error) => {
+				console.error("Failed to check live search status:", error);
+			});
 
 		// Load go to hideout setting
 		getGoToHideout()
