@@ -38,8 +38,8 @@ import {
 import {
 	formatTimestamp,
 	getLogEntries,
-	parseMetadata,
 	type LogEntry,
+	parseMetadata,
 } from "@/services/loggingService";
 
 import { livesearch } from "~wails/go/models";
@@ -67,7 +67,7 @@ export default function LiveSearch() {
 	const [editDescription, setEditDescription] = useState("");
 	const [isLiveSearchRunning, setIsLiveSearchRunning] = useState(false);
 	const [goToHideoutEnabled, setGoToHideoutEnabled] = useState(false);
-	
+
 	// Log viewer state
 	const [showLogs, setShowLogs] = useState(false);
 	const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -77,9 +77,9 @@ export default function LiveSearch() {
 	const loadLiveSearchLogs = async () => {
 		try {
 			setLogsLoading(true);
-			const liveSearchLogs = await getLogEntries({ 
+			const liveSearchLogs = await getLogEntries({
 				module: "livesearch",
-				limit: 100 
+				limit: 100,
 			});
 			setLogs(liveSearchLogs);
 		} catch (error) {
@@ -234,164 +234,183 @@ export default function LiveSearch() {
 				<CardHeader>
 					<div className="flex justify-between items-center">
 						<CardTitle>Live Search</CardTitle>
-						<Button 
-							variant="outline" 
-							size="sm" 
+						<Button
+							variant="outline"
+							size="sm"
 							onClick={toggleLogs}
 							disabled={logsLoading}
 						>
-							{logsLoading ? "Loading..." : showLogs ? "Hide Logs" : "View Logs"}
+							{logsLoading
+								? "Loading..."
+								: showLogs
+									? "Hide Logs"
+									: "View Logs"}
 						</Button>
 					</div>
 				</CardHeader>
 				<CardContent>
 					<form className="flex gap-4 mb-6" onSubmit={handleAdd}>
-					<Input
-						placeholder="Trade link URL"
-						value={url}
-						onChange={(e) => setUrl(e.target.value)}
-						required
-					/>
-					<Input
-						placeholder="Description (optional)"
-						value={description}
-						onChange={(e) => setDescription(e.target.value)}
-					/>
+						<Input
+							placeholder="Trade link URL"
+							value={url}
+							onChange={(e) => setUrl(e.target.value)}
+							required
+						/>
+						<Input
+							placeholder="Description (optional)"
+							value={description}
+							onChange={(e) => setDescription(e.target.value)}
+						/>
 
-					<Button type="submit">Add</Button>
-				</form>
+						<Button type="submit">Add</Button>
+					</form>
 
-				<div className="flex items-center space-x-2 mb-4 p-3 bg-muted/30 rounded-lg">
-					<Checkbox
-						id={checkboxId}
-						checked={goToHideoutEnabled}
-						onCheckedChange={handleGoToHideoutChange}
-					/>
-					<Label
-						htmlFor={checkboxId}
-						className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-					>
-						Automatically visit seller's hideout when trade opportunity is found
-					</Label>
-				</div>
-
-				<DataTable
-					columns={getColumns({
-						editIdx,
-						editUrl,
-						editDescription,
-						setEditUrl,
-						setEditDescription,
-						handleEdit,
-						handleSaveEdit,
-						handleCancelEdit,
-						handleDelete,
-						handleSelect,
-						data: links,
-					})}
-					data={links}
-				/>
-			</CardContent>
-			<CardFooter>
-				{isLiveSearchRunning ? (
-					<Button className="w-full" variant="destructive" onClick={handleStop}>
-						Stop Live Search
-					</Button>
-				) : (
-					<Button className="w-full" onClick={handleStart}>
-						Start Live Search
-					</Button>
-				)}
-			</CardFooter>
-		</Card>
-
-		{/* LiveSearch Logs Viewer */}
-		{showLogs && (
-			<Card>
-				<CardHeader>
-					<div className="flex justify-between items-center">
-						<CardTitle className="text-lg">LiveSearch Logs</CardTitle>
-						<Badge variant="secondary">{logs.length} entries</Badge>
+					<div className="flex items-center space-x-2 mb-4 p-3 bg-muted/30 rounded-lg">
+						<Checkbox
+							id={checkboxId}
+							checked={goToHideoutEnabled}
+							onCheckedChange={handleGoToHideoutChange}
+						/>
+						<Label
+							htmlFor={checkboxId}
+							className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+						>
+							Automatically visit seller's hideout when trade opportunity is
+							found
+						</Label>
 					</div>
-				</CardHeader>
-				<CardContent>
-					{logsLoading ? (
-						<div className="text-center py-8">Loading logs...</div>
-					) : logs.length === 0 ? (
-						<div className="text-center py-8 text-muted-foreground">
-							No LiveSearch logs found
-						</div>
-					) : (
-						<div className="space-y-4">
-							<div className="text-sm text-muted-foreground mb-4">
-								Showing recent LiveSearch activity and events
-							</div>
-							<div className="max-h-96 overflow-y-auto">
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead className="w-[140px]">Time</TableHead>
-											<TableHead className="w-[80px]">Level</TableHead>
-											<TableHead>Message</TableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{logs.map((log) => (
-											<TableRow key={log.id}>
-												<TableCell className="font-mono text-xs">
-													{formatTimestamp(log.timestamp)}
-												</TableCell>
-												<TableCell>
-													<Badge 
-														variant={
-															log.level === "error" ? "destructive" :
-															log.level === "warning" ? "outline" :
-															log.level === "success" ? "default" : "secondary"
-														}
-														className="text-xs"
-													>
-														{log.level}
-													</Badge>
-												</TableCell>
-												<TableCell>
-													<div className="space-y-1">
-														<div className="text-sm">{log.message}</div>
-														{log.metadata && parseMetadata(log.metadata) && (
-															<div className="text-xs text-muted-foreground">
-																{(() => {
-																	const metadata = parseMetadata(log.metadata);
-																	if (metadata?.item_name) {
-																		return `Item: ${metadata.item_name}`;
-																	}
-																	if (metadata?.search_id) {
-																		return `Search ID: ${metadata.search_id}`;
-																	}
-																	if (metadata?.url) {
-																		return `URL: ${metadata.url}`;
-																	}
-																	return null;
-																})()}
-															</div>
-														)}
-													</div>
-												</TableCell>
-											</TableRow>
-										))}
-									</TableBody>
-								</Table>
-							</div>
-							<Separator />
-							<div className="flex justify-between items-center text-sm text-muted-foreground">
-								<span>Last updated: {new Date().toLocaleTimeString()}</span>
-								<Button variant="ghost" size="sm" onClick={loadLiveSearchLogs}>
-									Refresh
-								</Button>
-							</div>
-						</div>
-					)}
+
+					<DataTable
+						columns={getColumns({
+							editIdx,
+							editUrl,
+							editDescription,
+							setEditUrl,
+							setEditDescription,
+							handleEdit,
+							handleSaveEdit,
+							handleCancelEdit,
+							handleDelete,
+							handleSelect,
+							data: links,
+						})}
+						data={links}
+					/>
 				</CardContent>
+				<CardFooter>
+					{isLiveSearchRunning ? (
+						<Button
+							className="w-full"
+							variant="destructive"
+							onClick={handleStop}
+						>
+							Stop Live Search
+						</Button>
+					) : (
+						<Button className="w-full" onClick={handleStart}>
+							Start Live Search
+						</Button>
+					)}
+				</CardFooter>
 			</Card>
-		)}
-	</div>
+
+			{/* LiveSearch Logs Viewer */}
+			{showLogs && (
+				<Card>
+					<CardHeader>
+						<div className="flex justify-between items-center">
+							<CardTitle className="text-lg">LiveSearch Logs</CardTitle>
+							<Badge variant="secondary">{logs.length} entries</Badge>
+						</div>
+					</CardHeader>
+					<CardContent>
+						{logsLoading ? (
+							<div className="text-center py-8">Loading logs...</div>
+						) : logs.length === 0 ? (
+							<div className="text-center py-8 text-muted-foreground">
+								No LiveSearch logs found
+							</div>
+						) : (
+							<div className="space-y-4">
+								<div className="text-sm text-muted-foreground mb-4">
+									Showing recent LiveSearch activity and events
+								</div>
+								<div className="max-h-96 overflow-y-auto">
+									<Table>
+										<TableHeader>
+											<TableRow>
+												<TableHead className="w-[140px]">Time</TableHead>
+												<TableHead className="w-[80px]">Level</TableHead>
+												<TableHead>Message</TableHead>
+											</TableRow>
+										</TableHeader>
+										<TableBody>
+											{logs.map((log) => (
+												<TableRow key={log.id}>
+													<TableCell className="font-mono text-xs">
+														{formatTimestamp(log.timestamp)}
+													</TableCell>
+													<TableCell>
+														<Badge
+															variant={
+																log.level === "error"
+																	? "destructive"
+																	: log.level === "warning"
+																		? "outline"
+																		: log.level === "success"
+																			? "default"
+																			: "secondary"
+															}
+															className="text-xs"
+														>
+															{log.level}
+														</Badge>
+													</TableCell>
+													<TableCell>
+														<div className="space-y-1">
+															<div className="text-sm">{log.message}</div>
+															{log.metadata && parseMetadata(log.metadata) && (
+																<div className="text-xs text-muted-foreground">
+																	{(() => {
+																		const metadata = parseMetadata(
+																			log.metadata,
+																		);
+																		if (metadata?.item_name) {
+																			return `Item: ${metadata.item_name}`;
+																		}
+																		if (metadata?.search_id) {
+																			return `Search ID: ${metadata.search_id}`;
+																		}
+																		if (metadata?.url) {
+																			return `URL: ${metadata.url}`;
+																		}
+																		return null;
+																	})()}
+																</div>
+															)}
+														</div>
+													</TableCell>
+												</TableRow>
+											))}
+										</TableBody>
+									</Table>
+								</div>
+								<Separator />
+								<div className="flex justify-between items-center text-sm text-muted-foreground">
+									<span>Last updated: {new Date().toLocaleTimeString()}</span>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={loadLiveSearchLogs}
+									>
+										Refresh
+									</Button>
+								</div>
+							</div>
+						)}
+					</CardContent>
+				</Card>
+			)}
+		</div>
 	);
 }
