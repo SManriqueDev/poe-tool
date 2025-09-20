@@ -71,7 +71,7 @@ func (s *Service) fetchItemDetails(itemIDs []string, searchId string) (*ItemFetc
 	idsParam := strings.Join(itemIDs, ",")
 	url := fmt.Sprintf("https://www.pathofexile.com/api/trade2/fetch/%s", idsParam)
 
-	// Add league parameter
+	// Add searchId parameter
 	url += "?query=" + searchId + "&realm=poe2"
 
 	// Get PoE session from settings
@@ -144,12 +144,6 @@ func NewService(settingsSvc *settings.Service) *Service {
 	return s
 }
 
-// func (s *Service) broadcastStatusUpdate(link TradeLink) {
-// 	if s.ctx != nil {
-// 		runtime.EventsEmit(s.ctx, "linkStatusChanged", link)
-// 	}
-// }
-
 func (s *Service) AddTradeLink(url string, description string) {
 	link := NewIdleTradeLink(url, description)
 	s.links = append(s.links, *link)
@@ -175,24 +169,6 @@ func (s *Service) ListTradeLinks() []TradeLink {
 	}
 	return append([]TradeLink{}, tradeLinks...)
 }
-
-// func (s *Service) ListTradeLinks() []TradeLink {
-// 	links, err := s.repo.GetTradeLinks()
-// 	if err != nil {
-// 		return []TradeLink{}
-// 	}
-// 	var tradeLinks []TradeLink
-// 	for _, l := range links {
-// 		tradeLinks = append(tradeLinks, TradeLink{
-// 			ID:          l.ID,
-// 			URL:         l.URL,
-// 			Description: l.Description,
-// 			Selected:    l.Selected,
-// 			Status:      "idle",
-// 		})
-// 	}
-// 	return append([]TradeLink{}, tradeLinks...)
-// }
 
 func (s *Service) StartLiveSearch() []TradeLink {
 	cfg := s.settingsSvc.Get()
@@ -253,20 +229,6 @@ func (s *Service) StartLiveSearch() []TradeLink {
 				}
 
 				log.Printf("Found %d new items for search %s: %v", len(liveMsg.New), msg.SearchID, liveMsg.New)
-
-				// Find the league for this search
-				// var league string
-				// for _, link := range links {
-				// 	if link.SearchID() == msg.SearchID {
-				// 		league = link.League()
-				// 		break
-				// 	}
-				// }
-
-				// if league == "" {
-				// 	log.Printf("Could not find league for search ID %s", msg.SearchID)
-				// 	continue
-				// }
 
 				// Fetch item details from PoE API
 				itemResp, err := s.fetchItemDetails(liveMsg.New, msg.SearchID)
