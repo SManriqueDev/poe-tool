@@ -2,12 +2,17 @@ package livesearch
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
-
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
+	"github.com/corpix/uarand"
 )
 
 const workerCount = 10 // Number of concurrent workers
@@ -29,8 +34,99 @@ type WSMessage struct {
 	Message  []byte
 }
 
+// WebSocket message structure from PoE API
+type LiveSearchMessage struct {
+	New []string `json:"new"`
+}
+
+// Item fetch response from PoE API
+type ItemFetchResponse struct {
+	Result []ItemResult `json:"result"`
+}
+
+type ItemResult struct {
+	ID      string          `json:"id"`
+	Item    json.RawMessage `json:"item"`
+	Listing json.RawMessage `json:"listing"`
+}
+
 func (s *Service) SetContext(ctx context.Context) {
 	s.ctx = ctx
+}
+
+// fetchItemDetails fetches item details from PoE API for given item IDs
+func (s *Service) fetchItemDetails(itemIDs []string, searchId string) (*ItemFetchResponse, error) {
+	if len(itemIDs) == 0 {
+		return &ItemFetchResponse{}, nil
+	}
+
+	// Limit the number of IDs per request (PoE API typically has limits)
+	const maxItemsPerRequest = 10
+	if len(itemIDs) > maxItemsPerRequest {
+		itemIDs = itemIDs[:maxItemsPerRequest]
+		log.Printf("Limiting request to %d items (max allowed)", maxItemsPerRequest)
+	}
+
+	// Join IDs with commas for the API call
+	idsParam := strings.Join(itemIDs, ",")
+	url := fmt.Sprintf("https://www.pathofexile.com/api/trade2/fetch/%s", idsParam)
+
+	// Add league parameter
+	url += "?query=" + searchId + "&realm=poe2"
+
+	// Get PoE session from settings
+	cfg := s.settingsSvc.Get()
+	poeSess := cfg.PoeSessid
+
+	if poeSess == "" {
+		return nil, fmt.Errorf("PoE session ID is not configured")
+	}
+
+	// Create HTTP request with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Add required headers
+	req.Header.Set("Cookie", "POESESSID="+poeSess)
+	req.Header.Set("User-Agent", uarand.GetRandom())
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Origin", "https://www.pathofexile.com")
+
+	// Make the request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Check status code
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("authentication failed - check PoE session ID")
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Parse JSON response
+	var fetchResp ItemFetchResponse
+	if err := json.Unmarshal(body, &fetchResp); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &fetchResp, nil
 }
 
 func NewService(settingsSvc *settings.Service) *Service {
@@ -143,7 +239,52 @@ func (s *Service) StartLiveSearch() []TradeLink {
 		go func() {
 			defer workerWg.Done()
 			for msg := range msgCh {
-				log.Printf("Processing message for %s: %s", msg.SearchID, string(msg.Message))
+				// Parse the WebSocket message
+				var liveMsg LiveSearchMessage
+				if err := json.Unmarshal(msg.Message, &liveMsg); err != nil {
+					log.Printf("Failed to parse WebSocket message for %s: %v", msg.SearchID, err)
+					continue
+				}
+
+				// Check if there are new items
+				if len(liveMsg.New) == 0 {
+					log.Printf("No new items in message for %s", msg.SearchID)
+					continue
+				}
+
+				log.Printf("Found %d new items for search %s: %v", len(liveMsg.New), msg.SearchID, liveMsg.New)
+
+				// Find the league for this search
+				// var league string
+				// for _, link := range links {
+				// 	if link.SearchID() == msg.SearchID {
+				// 		league = link.League()
+				// 		break
+				// 	}
+				// }
+
+				// if league == "" {
+				// 	log.Printf("Could not find league for search ID %s", msg.SearchID)
+				// 	continue
+				// }
+
+				// Fetch item details from PoE API
+				itemResp, err := s.fetchItemDetails(liveMsg.New, msg.SearchID)
+				if err != nil {
+					log.Printf("Failed to fetch item details for search %s: %v", msg.SearchID, err)
+					continue
+				}
+
+				log.Printf("Successfully fetched %d items for search %s", len(itemResp.Result), msg.SearchID)
+
+				// Emit event with new items for frontend
+				s.eventBus.EmitNewItems(s.ctx, msg.SearchID, itemResp.Result)
+
+				// Process each item (you can add more logic here)
+				for _, item := range itemResp.Result {
+					log.Printf("New item found - ID: %s", item.ID)
+					// Here you could store in database, send notifications, etc.
+				}
 			}
 		}()
 	}
