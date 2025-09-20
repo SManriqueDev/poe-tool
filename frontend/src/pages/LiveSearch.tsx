@@ -67,27 +67,35 @@ export default function LiveSearch() {
 				console.error("Failed to load go to hideout setting:", error);
 			});
 
-		const offStatusChanged = EventsOn("linkStatusChanged", (link: TradeLink) => {
-			console.log("Received linkStatusChanged event", link);
-			setLinks((prev) =>
-				prev.map((l) => (l.id === link.id ? { ...l, ...link } : l)),
-			);
-		});
+		const offStatusChanged = EventsOn(
+			"linkStatusChanged",
+			(link: TradeLink) => {
+				console.log("Received linkStatusChanged event", link);
+				setLinks((prev) =>
+					prev.map((l) => (l.id === link.id ? { ...l, ...link } : l)),
+				);
+			},
+		);
 
 		const offNewItems = EventsOn("newItemsFound", (data: NewItemsEvent) => {
-			console.log("New items found for search", data.searchID, "- Count:", data.count);
+			console.log(
+				"New items found for search",
+				data.searchID,
+				"- Count:",
+				data.count,
+			);
 			console.log("Items:", data.items);
 
 			// Show toast notification
-			toast(`Found ${data.count} new item${data.count > 1 ? 's' : ''}!`, {
+			toast(`Found ${data.count} new item${data.count > 1 ? "s" : ""}!`, {
 				description: `Search ID: ${data.searchID}`,
 				action: {
 					label: "View",
 					onClick: () => {
 						// Here you could open a modal or navigate to item details
 						console.log("View items clicked", data.items);
-					}
-				}
+					},
+				},
 			});
 		});
 

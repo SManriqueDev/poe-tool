@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,6 @@ import {
 	getLogLevels,
 	getLogModules,
 	getLogStats,
-	searchLogs,
 } from "../services/loggingService";
 
 interface LogEntry {
@@ -73,6 +72,7 @@ const levelLabels: Record<string, string> = {
 };
 
 export default function Log() {
+	const searchId = useId();
 	const [logs, setLogs] = useState<LogEntry[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [modules, setModules] = useState<string[]>([]);
@@ -85,11 +85,7 @@ export default function Log() {
 	const [searchText, setSearchText] = useState("");
 	const [limit, setLimit] = useState(100);
 
-	useEffect(() => {
-		loadInitialData();
-	}, []);
-
-	const loadInitialData = async () => {
+	const loadInitialData = useCallback(async () => {
 		try {
 			setLoading(true);
 
@@ -111,7 +107,11 @@ export default function Log() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
+
+	useEffect(() => {
+		loadInitialData();
+	}, [loadInitialData]);
 
 	const handleFilter = async () => {
 		try {
@@ -336,9 +336,9 @@ export default function Log() {
 						</div>
 
 						<div>
-							<Label htmlFor="search">Search</Label>
+							<Label htmlFor={searchId}>Search</Label>
 							<Input
-								id="search"
+								id={searchId}
 								placeholder="Search messages..."
 								value={searchText}
 								onChange={(e) => setSearchText(e.target.value)}
