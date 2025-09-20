@@ -16,8 +16,25 @@ type Repository struct {
 	db *sql.DB
 }
 
-func NewRepository() *Repository {
-	return &Repository{db: db.GetDB()}
+// RepositoryOption defines a functional option for Repository configuration
+type RepositoryOption func(*Repository)
+
+// WithDatabase sets a custom database connection
+func WithDatabase(database *sql.DB) RepositoryOption {
+	return func(r *Repository) {
+		r.db = database
+	}
+}
+
+func NewRepository(opts ...RepositoryOption) *Repository {
+	r := &Repository{db: db.GetDB()}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	return r
 }
 
 func (r *Repository) Set(key, value string) error {

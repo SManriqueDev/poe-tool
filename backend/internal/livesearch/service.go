@@ -254,12 +254,6 @@ func (s *Service) UpdateTradeLink(id int, url string, description string, select
 	return s.repo.UpdateTradeLink(id, url, description, selected)
 }
 
-func (s *Service) SetGoToHideout(value bool) error {
-	cfg := s.settingsSvc.Get()
-	cfg.GoToHideout = value
-	return s.settingsSvc.Save()
-}
-
 func (s *Service) DeleteTradeLink(id int) error {
 	return s.repo.DeleteTradeLink(id)
 }
