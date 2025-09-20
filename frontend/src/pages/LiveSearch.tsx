@@ -1,16 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   addTradeLink,
   deleteTradeLink,
+  getGoToHideout,
   listTradeLinks,
+  setGoToHideout,
   startLiveSearch,
   stopLiveSearch,
   updateTradeLink,
 } from "@/services/liveSearchService";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { livesearch } from "../../wailsjs/go/models";
 
@@ -21,6 +25,7 @@ import { DataTable } from "@/live-search/data-table";
 import { EventsOn } from "../../wailsjs/runtime";
 
 export default function LiveSearch() {
+  const checkboxId = useId();
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
   const [links, setLinks] = useState<TradeLink[]>([]);
@@ -28,12 +33,22 @@ export default function LiveSearch() {
   const [editUrl, setEditUrl] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [isLiveSearchRunning, setIsLiveSearchRunning] = useState(false);
+  const [goToHideoutEnabled, setGoToHideoutEnabled] = useState(false);
 
   useEffect(() => {
     listTradeLinks().then((links) => {
       console.log("Fetched trade links", links);
       setLinks(links);
     });
+
+    // Load go to hideout setting
+    getGoToHideout()
+      .then((enabled) => {
+        setGoToHideoutEnabled(enabled);
+      })
+      .catch((error) => {
+        console.error("Failed to load go to hideout setting:", error);
+      });
 
     const off = EventsOn("linkStatusChanged", (link: TradeLink) => {
       console.log("Received linkStatusChanged event", link);
@@ -108,6 +123,17 @@ export default function LiveSearch() {
     setLinks(updatedLinks);
   };
 
+  const handleGoToHideoutChange = async (checked: boolean) => {
+    try {
+      await setGoToHideout(checked);
+      setGoToHideoutEnabled(checked);
+      toast.success(`Auto-visit hideout ${checked ? "enabled" : "disabled"}`);
+    } catch (error) {
+      console.error("Failed to update go to hideout setting:", error);
+      toast.error("Failed to update setting");
+    }
+  };
+
   return (
     <Card className="max-w-3xl w-full mx-auto mt-12">
       <CardHeader>
@@ -129,6 +155,21 @@ export default function LiveSearch() {
 
           <Button type="submit">Add</Button>
         </form>
+
+        <div className="flex items-center space-x-2 mb-4 p-3 bg-muted/30 rounded-lg">
+          <Checkbox
+            id={checkboxId}
+            checked={goToHideoutEnabled}
+            onCheckedChange={handleGoToHideoutChange}
+          />
+          <Label
+            htmlFor={checkboxId}
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            Automatically visit seller's hideout when trade opportunity is found
+          </Label>
+        </div>
+
         <DataTable
           columns={getColumns({
             editIdx,

@@ -1,7 +1,9 @@
 import {
   AddTradeLink,
   DeleteTradeLink,
+  GetGoToHideout,
   ListTradeLinks,
+  SetGoToHideout,
   StartLiveSearch,
   StopLiveSearch,
   UpdateTradeLink,
@@ -32,4 +34,12 @@ export async function startLiveSearch() {
 
 export async function stopLiveSearch() {
   return StopLiveSearch();
+}
+
+export async function setGoToHideout(enabled: boolean): Promise<void> {
+  return SetGoToHideout(enabled);
+}
+
+export async function getGoToHideout(): Promise<boolean> {
+  return GetGoToHideout();
 }

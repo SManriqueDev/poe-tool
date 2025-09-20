@@ -34,13 +34,18 @@ func (s *Service) SetContext(ctx context.Context) {
 }
 
 func NewService(settingsSvc *settings.Service) *Service {
-	return &Service{
+	s := &Service{
 		links:       make([]TradeLink, 0),
 		settingsSvc: settingsSvc,
 		repo:        NewRepository(),
 		wsClient:    NewWebSocketClient(),
 		eventBus:    &WailsEventBus{},
 	}
+
+	// Initialize go_to_hideout setting with default value false if it doesn't exist
+	_ = s.repo.InitializeLiveSearchSetting("go_to_hideout", false)
+
+	return s
 }
 
 // func (s *Service) broadcastStatusUpdate(link TradeLink) {
@@ -256,4 +261,12 @@ func (s *Service) UpdateTradeLink(id int, url string, description string, select
 
 func (s *Service) DeleteTradeLink(id int) error {
 	return s.repo.DeleteTradeLink(id)
+}
+
+func (s *Service) SetGoToHideout(enabled bool) error {
+	return s.repo.UpdateLiveSearchSetting("go_to_hideout", enabled)
+}
+
+func (s *Service) GetGoToHideout() (bool, error) {
+	return s.repo.GetLiveSearchSetting("go_to_hideout")
 }

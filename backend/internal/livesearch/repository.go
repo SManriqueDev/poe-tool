@@ -99,3 +99,44 @@ func boolToInt(b bool) int {
 	}
 	return 0
 }
+
+func (r *Repository) SetLiveSearchSetting(name string, enabled bool) error {
+	_, err := r.db.Exec("INSERT OR REPLACE INTO live_search_settings (name, enabled) VALUES (?, ?)", name, boolToInt(enabled))
+	return err
+}
+
+func (r *Repository) UpdateLiveSearchSetting(name string, enabled bool) error {
+	_, err := r.db.Exec("UPDATE live_search_settings SET enabled = ? WHERE name = ?", boolToInt(enabled), name)
+	return err
+}
+
+func (r *Repository) LiveSearchSettingExists(name string) (bool, error) {
+	var count int
+	err := r.db.QueryRow("SELECT COUNT(*) FROM live_search_settings WHERE name = ?", name).Scan(&count)
+	return count > 0, err
+}
+
+func (r *Repository) InitializeLiveSearchSetting(name string, defaultValue bool) error {
+	exists, err := r.LiveSearchSettingExists(name)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return r.SetLiveSearchSetting(name, defaultValue)
+	}
+
+	return nil
+}
+
+func (r *Repository) GetLiveSearchSetting(name string) (bool, error) {
+	var enabledInt int
+	err := r.db.QueryRow("SELECT enabled FROM live_search_settings WHERE name = ?", name).Scan(&enabledInt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil // Default to false if setting doesn't exist
+		}
+		return false, err
+	}
+	return enabledInt == 1, nil
+}

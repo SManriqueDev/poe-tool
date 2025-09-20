@@ -41,3 +41,11 @@ func (h *Handler) SetContext(ctx context.Context) {
 func (h *Handler) DeleteTradeLink(id int) error {
 	return h.svc.DeleteTradeLink(id)
 }
+
+func (h *Handler) SetGoToHideout(enabled bool) error {
+	return h.svc.SetGoToHideout(enabled)
+}
+
+func (h *Handler) GetGoToHideout() (bool, error) {
+	return h.svc.GetGoToHideout()
+}

@@ -11,19 +11,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { loadConfig, saveConfig } from "@/services/configService";
-import React, { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { settings } from "../../wailsjs/go/models";
+
 import Config = settings.Config;
-import DefaultTradeLink = settings.DefaultTradeLink;
+// import DefaultTradeLink = settings.DefaultTradeLink;
 
 export default function Settings() {
+  const poeSessidId = useId();
+  const accountNameId = useId();
+  const leagueId = useId();
+  const automationEnabledId = useId();
+  const delayId = useId();
+  const formId = useId();
+
   const [poeSessid, setPoeSessid] = useState("");
   const [accountName, setAccountName] = useState("");
   const [league, setLeague] = useState("");
   const [automationEnabled, setAutomationEnabled] = useState(false);
   const [delay, setDelay] = useState(1000);
-  const [defaultTradeLinks, _] = useState<DefaultTradeLink[]>([]); // Placeholder for future use
+  // const [defaultTradeLinks, _] = useState<DefaultTradeLink[]>([]); // Placeholder for future use
 
   useEffect(() => {
     loadConfig().then((cfg: Config) => {
@@ -42,7 +50,7 @@ export default function Settings() {
       league,
       automationEnabled,
       delay,
-      defaultTradeLinks,
+      // defaultTradeLinks,
     });
     await saveConfig(cfg);
     toast("Settings saved!");
@@ -62,7 +70,7 @@ export default function Settings() {
       </CardHeader>
       <CardContent>
         <form
-          id="settings-form"
+          id={formId}
           className="flex flex-col gap-6"
           onSubmit={(e) => {
             e.preventDefault();
@@ -70,9 +78,9 @@ export default function Settings() {
           }}
         >
           <div className="grid gap-2">
-            <Label htmlFor="poe-sessid">POESESSID</Label>
+            <Label htmlFor={poeSessidId}>POESESSID</Label>
             <Input
-              id="poe-sessid"
+              id={poeSessidId}
               type="text"
               value={poeSessid}
               onChange={(e) => setPoeSessid(e.target.value)}
@@ -81,9 +89,9 @@ export default function Settings() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="account-name">Account Name</Label>
+            <Label htmlFor={accountNameId}>Account Name</Label>
             <Input
-              id="account-name"
+              id={accountNameId}
               type="text"
               value={accountName}
               onChange={(e) => setAccountName(e.target.value)}
@@ -91,9 +99,9 @@ export default function Settings() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="league">League</Label>
+            <Label htmlFor={leagueId}>League</Label>
             <Input
-              id="league"
+              id={leagueId}
               type="text"
               value={league}
               onChange={(e) => setLeague(e.target.value)}
@@ -101,17 +109,17 @@ export default function Settings() {
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="automation-enabled">Enable Automation</Label>
+            <Label htmlFor={automationEnabledId}>Enable Automation</Label>
             <Switch
-              id="automation-enabled"
+              id={automationEnabledId}
               checked={automationEnabled}
               onCheckedChange={setAutomationEnabled}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="delay">Delay (ms)</Label>
+            <Label htmlFor={delayId}>Delay (ms)</Label>
             <Input
-              id="delay"
+              id={delayId}
               type="number"
               min={100}
               max={10000}
@@ -122,7 +130,7 @@ export default function Settings() {
         </form>
       </CardContent>
       <CardFooter>
-        <Button type="submit" form="settings-form" className="w-full mt-2">
+        <Button type="submit" form={formId} className="w-full mt-2">
           Save
         </Button>
       </CardFooter>

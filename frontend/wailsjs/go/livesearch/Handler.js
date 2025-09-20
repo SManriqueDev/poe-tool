@@ -10,12 +10,20 @@ export function DeleteTradeLink(arg1) {
   return window['go']['livesearch']['Handler']['DeleteTradeLink'](arg1);
 }
 
+export function GetGoToHideout() {
+  return window['go']['livesearch']['Handler']['GetGoToHideout']();
+}
+
 export function ListTradeLinks() {
   return window['go']['livesearch']['Handler']['ListTradeLinks']();
 }
 
 export function SetContext(arg1) {
   return window['go']['livesearch']['Handler']['SetContext'](arg1);
+}
+
+export function SetGoToHideout(arg1) {
+  return window['go']['livesearch']['Handler']['SetGoToHideout'](arg1);
 }
 
 export function StartLiveSearch() {
