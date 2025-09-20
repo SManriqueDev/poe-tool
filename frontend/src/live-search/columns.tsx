@@ -1,10 +1,11 @@
-import React from "react";
-import { livesearch } from "~wails/go/models";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Trash2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+
+import { livesearch } from "~wails/go/models";
 
 import TradeLink = livesearch.TradeLink;
 

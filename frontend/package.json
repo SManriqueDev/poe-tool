@@ -9,7 +9,7 @@
 		"preview": "vite preview",
 		"lint": "biome lint ./src",
 		"format": "biome format --write ./src",
-		"check": "biome check --write ./src"
+		"check": "biome check --write --unsafe ./src"
 	},
 	"dependencies": {
 		"@radix-ui/react-alert-dialog": "^1.1.15",
