@@ -7,12 +7,18 @@ import {
 	Card,
 	CardContent,
 	CardDescription,
-	CardFooter,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import {
 	Table,
 	TableBody,
@@ -40,17 +46,12 @@ export default function Logs() {
 	const [logs, setLogs] = useState<LogEntry[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [searchText, setSearchText] = useState("");
-	const [selectedModule, setSelectedModule] = useState<string>("");
-	const [selectedLevel, setSelectedLevel] = useState<string>("");
+	const [selectedModule, setSelectedModule] = useState<string>("all");
+	const [selectedLevel, setSelectedLevel] = useState<string>("all");
 	const [stats, setStats] = useState<LogStats | null>(null);
 	const [modules, setModules] = useState<string[]>([]);
 	const [levels, setLevels] = useState<string[]>([]);
 	const [expandedLog, setExpandedLog] = useState<number | null>(null);
-
-	// Load initial data
-	useEffect(() => {
-		loadInitialData();
-	}, []);
 
 	const loadInitialData = useCallback(async () => {
 		try {
@@ -73,6 +74,12 @@ export default function Logs() {
 			setLoading(false);
 		}
 	}, []);
+
+	// Load initial data
+	useEffect(() => {
+		loadInitialData();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [loadInitialData]);
 
 	const handleSearch = async () => {
 		if (!searchText.trim()) {
@@ -97,8 +104,10 @@ export default function Logs() {
 			setLoading(true);
 			const filter: LogFilter = {};
 
-			if (selectedModule) filter.module = selectedModule;
-			if (selectedLevel) filter.level = selectedLevel;
+			if (selectedModule && selectedModule !== "all")
+				filter.module = selectedModule;
+			if (selectedLevel && selectedLevel !== "all")
+				filter.level = selectedLevel;
 
 			const results = await getLogEntries(filter);
 			setLogs(results);
@@ -170,63 +179,78 @@ export default function Logs() {
 
 	if (loading && logs.length === 0) {
 		return (
-			<div className="container mx-auto p-6">
-				<div className="text-center">Loading logs...</div>
+			<div className="container mx-auto p-4 lg:p-6">
+				<div className="text-center text-sm lg:text-base">Loading logs...</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="container mx-auto p-6 space-y-6">
-			<div className="flex justify-between items-center">
+		<div className="container mx-auto p-4 lg:p-6 space-y-4 lg:space-y-6">
+			<div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
 				<div>
-					<h1 className="text-3xl font-bold">Logs</h1>
-					<p className="text-muted-foreground">
+					<h1 className="text-2xl lg:text-3xl font-bold">Logs</h1>
+					<p className="text-sm lg:text-base text-muted-foreground">
 						Monitor application activity and debug issues
 					</p>
 				</div>
-				<Button variant="destructive" onClick={handleClearLogs}>
+				<Button
+					variant="destructive"
+					onClick={handleClearLogs}
+					size="sm"
+					className="self-start sm:self-auto"
+				>
 					Clear All Logs
 				</Button>
 			</div>
 
 			{/* Stats Cards */}
 			{stats && (
-				<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+				<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
 					<Card>
 						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">
+							<CardTitle className="text-xs lg:text-sm font-medium">
 								Total Entries
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-bold">{stats.total_entries}</div>
+							<div className="text-lg lg:text-2xl font-bold">
+								{stats.total_entries}
+							</div>
 						</CardContent>
 					</Card>
 					<Card>
 						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Today</CardTitle>
+							<CardTitle className="text-xs lg:text-sm font-medium">
+								Today
+							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-bold">{stats.today_entries}</div>
+							<div className="text-lg lg:text-2xl font-bold">
+								{stats.today_entries}
+							</div>
 						</CardContent>
 					</Card>
 					<Card>
 						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Modules</CardTitle>
+							<CardTitle className="text-xs lg:text-sm font-medium">
+								Modules
+							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-bold">
+							<div className="text-lg lg:text-2xl font-bold">
 								{Object.keys(stats.by_module).length}
 							</div>
 						</CardContent>
 					</Card>
 					<Card>
 						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-medium">Error Count</CardTitle>
+							<CardTitle className="text-xs lg:text-sm font-medium">
+								Error Count
+							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-bold text-red-600">
+							<div className="text-lg lg:text-2xl font-bold text-red-600">
 								{stats.by_level.error || 0}
 							</div>
 						</CardContent>
@@ -237,54 +261,100 @@ export default function Logs() {
 			{/* Filters */}
 			<Card>
 				<CardHeader>
-					<CardTitle>Filters & Search</CardTitle>
-					<CardDescription>
+					<CardTitle className="text-lg">Filters & Search</CardTitle>
+					<CardDescription className="text-sm">
 						Filter logs by module, level, or search text
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+					{/* Search Row - Always full width */}
+					<div className="space-y-2">
+						<Label className="text-sm font-medium">Search</Label>
+						<div className="flex gap-2">
+							<Input
+								placeholder="Search logs..."
+								value={searchText}
+								onChange={(e) => setSearchText(e.target.value)}
+								onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+								className="flex-1 min-w-0"
+							/>
+							<Button
+								onClick={handleSearch}
+								size="sm"
+								className="px-3 lg:px-4 shrink-0"
+								disabled={loading}
+							>
+								Search
+							</Button>
+						</div>
+					</div>
+
+					{/* Filters Row - Responsive grid */}
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 						<div className="space-y-2">
-							<Label>Search</Label>
+							<Label className="text-sm font-medium">Module</Label>
+							<Select value={selectedModule} onValueChange={setSelectedModule}>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="All Modules" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all">All Modules</SelectItem>
+									{modules.map((module) => (
+										<SelectItem key={module} value={module}>
+											{module.charAt(0).toUpperCase() + module.slice(1)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+
+						<div className="space-y-2">
+							<Label className="text-sm font-medium">Level</Label>
+							<Select value={selectedLevel} onValueChange={setSelectedLevel}>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="All Levels" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all">All Levels</SelectItem>
+									{levels.map((level) => (
+										<SelectItem key={level} value={level}>
+											<Badge
+												variant={getLogLevelBadgeVariant(level)}
+												className="mr-2"
+											>
+												{level.charAt(0).toUpperCase() + level.slice(1)}
+											</Badge>
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+
+						<div className="space-y-2 sm:col-span-2 lg:col-span-1">
+							<Label className="text-sm font-medium">Actions</Label>
 							<div className="flex gap-2">
-								<Input
-									placeholder="Search logs..."
-									value={searchText}
-									onChange={(e) => setSearchText(e.target.value)}
-									onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-								/>
-								<Button onClick={handleSearch}>Search</Button>
+								<Button
+									variant="outline"
+									onClick={loadLogs}
+									disabled={loading}
+									size="sm"
+									className="flex-1"
+								>
+									{loading ? "Loading..." : "Refresh"}
+								</Button>
+								<Button
+									variant="ghost"
+									onClick={() => {
+										setSearchText("");
+										setSelectedModule("all");
+										setSelectedLevel("all");
+									}}
+									size="sm"
+									className="flex-1"
+								>
+									Clear
+								</Button>
 							</div>
-						</div>
-						<div className="space-y-2">
-							<Label>Module</Label>
-							<select
-								className="w-full p-2 border rounded"
-								value={selectedModule}
-								onChange={(e) => setSelectedModule(e.target.value)}
-							>
-								<option value="">All Modules</option>
-								{modules.map((module) => (
-									<option key={module} value={module}>
-										{module}
-									</option>
-								))}
-							</select>
-						</div>
-						<div className="space-y-2">
-							<Label>Level</Label>
-							<select
-								className="w-full p-2 border rounded"
-								value={selectedLevel}
-								onChange={(e) => setSelectedLevel(e.target.value)}
-							>
-								<option value="">All Levels</option>
-								{levels.map((level) => (
-									<option key={level} value={level}>
-										{level}
-									</option>
-								))}
-							</select>
 						</div>
 					</div>
 				</CardContent>
@@ -293,79 +363,84 @@ export default function Logs() {
 			{/* Logs Table */}
 			<Card>
 				<CardHeader>
-					<CardTitle>Log Entries</CardTitle>
-					<CardDescription>
+					<CardTitle className="text-lg">Log Entries</CardTitle>
+					<CardDescription className="text-sm">
 						{logs.length} entries {loading && "(Loading...)"}
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Timestamp</TableHead>
-								<TableHead>Level</TableHead>
-								<TableHead>Module</TableHead>
-								<TableHead>Message</TableHead>
-								<TableHead className="w-[100px]">Details</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{logs.length === 0 ? (
+					<div className="overflow-x-auto">
+						<Table>
+							<TableHeader>
 								<TableRow>
-									<TableCell colSpan={5} className="text-center py-8">
-										No logs found
-									</TableCell>
+									<TableHead>Timestamp</TableHead>
+									<TableHead>Level</TableHead>
+									<TableHead>Module</TableHead>
+									<TableHead>Message</TableHead>
+									<TableHead className="w-[100px]">Details</TableHead>
 								</TableRow>
-							) : (
-								logs.map((log) => (
-									<Fragment key={log.id}>
-										<TableRow className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
-											<TableCell className="font-mono text-xs">
-												{formatTimestamp(log.timestamp)}
-											</TableCell>
-											<TableCell>
-												<Badge variant={getLogLevelBadgeVariant(log.level)}>
-													{log.level}
-												</Badge>
-											</TableCell>
-											<TableCell>
-												<Badge variant="outline">{log.module}</Badge>
-											</TableCell>
-											<TableCell className="max-w-md truncate">
-												{log.message}
-											</TableCell>
-											<TableCell>
-												{log.metadata && (
-													<Button
-														variant="ghost"
-														size="sm"
-														onClick={() => toggleLogExpansion(log.id)}
+							</TableHeader>
+							<TableBody>
+								{logs.length === 0 ? (
+									<TableRow>
+										<TableCell colSpan={5} className="text-center py-8 text-sm">
+											No logs found
+										</TableCell>
+									</TableRow>
+								) : (
+									logs.map((log) => (
+										<Fragment key={log.id}>
+											<TableRow className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
+												<TableCell className="font-mono text-xs p-3">
+													<div className="truncate">
+														{formatTimestamp(log.timestamp)}
+													</div>
+												</TableCell>
+												<TableCell className="p-3">
+													<Badge
+														variant={getLogLevelBadgeVariant(log.level)}
+														className="text-xs"
 													>
-														{expandedLog === log.id ? "Hide" : "Show"}
-													</Button>
-												)}
-											</TableCell>
-										</TableRow>
-										{expandedLog === log.id && log.metadata && (
-											<TableRow>
-												<TableCell colSpan={5}>
-													{renderMetadata(log.metadata)}
+														{log.level}
+													</Badge>
+												</TableCell>
+												<TableCell className="p-3">
+													<Badge variant="outline" className="text-xs">
+														{log.module}
+													</Badge>
+												</TableCell>
+												<TableCell className="p-3">
+													<div className="max-w-[300px] lg:max-w-[500px] truncate text-sm">
+														{log.message}
+													</div>
+												</TableCell>
+												<TableCell className="p-3">
+													{log.metadata && (
+														<Button
+															variant="ghost"
+															size="sm"
+															onClick={() => toggleLogExpansion(log.id)}
+															className="h-8 px-2 text-xs"
+														>
+															{expandedLog === log.id ? "Hide" : "Show"}
+														</Button>
+													)}
 												</TableCell>
 											</TableRow>
-										)}
-									</Fragment>
-								))
-							)}
-						</TableBody>
-					</Table>
+											{expandedLog === log.id && log.metadata && (
+												<TableRow>
+													<TableCell colSpan={5} className="p-3">
+														{renderMetadata(log.metadata)}
+													</TableCell>
+												</TableRow>
+											)}
+										</Fragment>
+									))
+								)}
+							</TableBody>
+						</Table>
+					</div>
 				</CardContent>
-				{logs.length > 0 && (
-					<CardFooter>
-						<Button variant="outline" onClick={loadLogs} disabled={loading}>
-							{loading ? "Loading..." : "Refresh"}
-						</Button>
-					</CardFooter>
-				)}
 			</Card>
 		</div>
 	);
