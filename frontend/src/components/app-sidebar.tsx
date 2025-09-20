@@ -1,5 +1,5 @@
 import { NavLink } from "react-router";
-import { Search, Settings } from "lucide-react";
+import { FileText, Search, Settings } from "lucide-react";
 
 import {
 	Sidebar,
@@ -19,11 +19,15 @@ const items = [
 		url: "/settings",
 		icon: Settings,
 	},
-
 	{
 		title: "Search",
 		url: "/search",
 		icon: Search,
+	},
+	{
+		title: "Logs",
+		url: "/logs",
+		icon: FileText,
 	},
 ];
 

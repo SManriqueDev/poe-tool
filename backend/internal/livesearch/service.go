@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/SManriqueDev/poe-tool/backend/internal/logging"
 	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
 	"github.com/corpix/uarand"
 )
@@ -21,6 +22,7 @@ type Service struct {
 	links            []TradeLink
 	mu               sync.Mutex
 	settingsSvc      *settings.Service
+	loggingSvc       *logging.Service
 	liveSearchCancel context.CancelFunc
 	ctx              context.Context
 	repo             *Repository
@@ -97,22 +99,36 @@ func (s *Service) fetchItemDetails(itemIDs []string, searchId string) (*ItemFetc
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Origin", "https://www.pathofexile.com")
 
-	// Make the request
+	// Make the request with timing
+	startTime := time.Now()
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	responseTime := time.Since(startTime)
+
+	// Log the API call
+	var errorMessage string
 	if err != nil {
+		errorMessage = err.Error()
+		s.loggingSvc.LogAPICall(url, "GET", 0, responseTime, errorMessage)
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// Check status code
 	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, fmt.Errorf("authentication failed - check PoE session ID")
+		errorMessage = "authentication failed - check PoE session ID"
+		s.loggingSvc.LogAPICall(url, "GET", resp.StatusCode, responseTime, errorMessage)
+		return nil, fmt.Errorf("%s", errorMessage)
 	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+		errorMessage = fmt.Sprintf("API returned status %d: %s", resp.StatusCode, string(body))
+		s.loggingSvc.LogAPICall(url, "GET", resp.StatusCode, responseTime, errorMessage)
+		return nil, fmt.Errorf("%s", errorMessage)
 	}
+
+	// Log successful API call
+	s.loggingSvc.LogAPICall(url, "GET", resp.StatusCode, responseTime, "")
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
@@ -129,10 +145,79 @@ func (s *Service) fetchItemDetails(itemIDs []string, searchId string) (*ItemFetc
 	return &fetchResp, nil
 }
 
-func NewService(settingsSvc *settings.Service) *Service {
+// logNewItem creates a log entry for a new item found during live search
+func (s *Service) logNewItem(item ItemResult, searchID string, tradeLink *TradeLink) {
+	// Extract item name from the item JSON
+	var itemData map[string]interface{}
+	if err := json.Unmarshal(item.Item, &itemData); err != nil {
+		log.Printf("Failed to parse item JSON for logging: %v", err)
+		return
+	}
+
+	// Extract listing data for price information
+	var listingData map[string]interface{}
+	if err := json.Unmarshal(item.Listing, &listingData); err != nil {
+		log.Printf("Failed to parse listing JSON for logging: %v", err)
+		listingData = nil
+	}
+
+	// Extract item name
+	itemName := "Unknown Item"
+	if name, ok := itemData["name"].(string); ok && name != "" {
+		itemName = name
+	} else if typeLine, ok := itemData["typeLine"].(string); ok {
+		itemName = typeLine
+	}
+
+	// Extract price information
+	var price *logging.Price
+	if listingData != nil {
+		if priceData, ok := listingData["price"].(map[string]interface{}); ok {
+			if amount, ok := priceData["amount"].(float64); ok {
+				if currency, ok := priceData["currency"].(string); ok {
+					priceType := "exact"
+					if pType, ok := priceData["type"].(string); ok {
+						priceType = pType
+					}
+					price = &logging.Price{
+						Amount:   amount,
+						Currency: currency,
+						Type:     priceType,
+					}
+				}
+			}
+		}
+	}
+
+	// Get league and search URL
+	league := "Unknown"
+	searchURL := ""
+	if tradeLink != nil {
+		league = tradeLink.League()
+		searchURL = tradeLink.URL
+	}
+
+	// Create item details string
+	itemDetails := fmt.Sprintf("Item ID: %s", item.ID)
+	if corrupted, ok := itemData["corrupted"].(bool); ok && corrupted {
+		itemDetails += " (Corrupted)"
+	}
+	if identified, ok := itemData["identified"].(bool); ok && !identified {
+		itemDetails += " (Unidentified)"
+	}
+
+	// Log the item
+	err := s.loggingSvc.LogItemFound(searchID, item.ID, itemName, league, searchURL, price, itemDetails)
+	if err != nil {
+		log.Printf("Failed to log new item: %v", err)
+	}
+}
+
+func NewService(settingsSvc *settings.Service, loggingSvc *logging.Service) *Service {
 	s := &Service{
 		links:       make([]TradeLink, 0),
 		settingsSvc: settingsSvc,
+		loggingSvc:  loggingSvc,
 		repo:        NewRepository(),
 		wsClient:    NewWebSocketClient(),
 		eventBus:    &WailsEventBus{},
@@ -242,10 +327,18 @@ func (s *Service) StartLiveSearch() []TradeLink {
 				// Emit event with new items for frontend
 				s.eventBus.EmitNewItems(s.ctx, msg.SearchID, itemResp.Result)
 
-				// Process each item (you can add more logic here)
+				// Find the trade link for more context
+				var tradeLink *TradeLink
+				for _, link := range links {
+					if link.SearchID() == msg.SearchID {
+						tradeLink = &link
+						break
+					}
+				}
+
+				// Process each item and log it
 				for _, item := range itemResp.Result {
-					log.Printf("New item found - ID: %s", item.ID)
-					// Here you could store in database, send notifications, etc.
+					s.logNewItem(item, msg.SearchID, tradeLink)
 				}
 			}
 		}()

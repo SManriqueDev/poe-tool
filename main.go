@@ -33,6 +33,7 @@ func main() {
 		Bind: []interface{}{
 			app.SettingsHandler,
 			app.LiveSearchHandler,
+			app.LoggingHandler,
 		},
 	})
 	if err != nil {
