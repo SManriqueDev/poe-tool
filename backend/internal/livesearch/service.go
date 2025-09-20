@@ -504,7 +504,7 @@ func (s *Service) GetLinkStatus(linkID int) string {
 func (s *Service) GetAllLinkStatuses() map[int]string {
 	s.statusMu.RLock()
 	defer s.statusMu.RUnlock()
-	
+
 	// Create a copy to avoid race conditions
 	statuses := make(map[int]string)
 	for id, status := range s.linkStatuses {

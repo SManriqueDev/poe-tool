@@ -27,10 +27,10 @@ import { getColumns } from "@/live-search/columns";
 import { DataTable } from "@/live-search/data-table";
 import {
 	addTradeLink,
+	isLiveSearchRunning as checkLiveSearchStatus,
 	deleteTradeLink,
 	getAllLinkStatuses,
 	getGoToHideout,
-	isLiveSearchRunning as checkLiveSearchStatus,
 	listTradeLinks,
 	setGoToHideout,
 	startLiveSearch,
@@ -106,13 +106,13 @@ export default function LiveSearch() {
 			.then(([links, statuses]) => {
 				console.log("Fetched trade links", links);
 				console.log("Fetched link statuses", statuses);
-				
+
 				// Apply statuses to links
-				const linksWithStatus = links.map(link => ({
+				const linksWithStatus = links.map((link) => ({
 					...link,
-					status: statuses[link.id] || link.status || "idle"
+					status: statuses[link.id] || link.status || "idle",
 				}));
-				
+
 				setLinks(linksWithStatus);
 			})
 			.catch((error) => {
