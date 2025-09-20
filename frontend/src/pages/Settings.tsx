@@ -1,5 +1,5 @@
-import { settings } from "@wails/go/models";
 import { useEffect, useId, useState } from "react";
+import { settings } from "~wails/go/models";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {

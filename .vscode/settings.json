@@ -1,2 +1,8 @@
 {
+  "biome.requireConfiguration": true,
+  "biome.configurationPath": "./frontend/biome.json",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.biome": "explicit"
+  }
 }

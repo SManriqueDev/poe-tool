@@ -1,7 +1,7 @@
-import { livesearch } from "@wails/go/models";
 import type React from "react";
 import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -13,6 +13,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getColumns } from "@/live-search/columns";
+import { DataTable } from "@/live-search/data-table";
 import {
 	addTradeLink,
 	deleteTradeLink,
@@ -23,12 +25,10 @@ import {
 	stopLiveSearch,
 	updateTradeLink,
 } from "@/services/liveSearchService";
+import { livesearch } from "~wails/go/models";
+import { EventsOn } from "~wails/runtime";
 
 import TradeLink = livesearch.TradeLink;
-
-import { EventsOn } from "@wails/runtime";
-import { getColumns } from "@/live-search/columns";
-import { DataTable } from "@/live-search/data-table";
 
 export default function LiveSearch() {
 	const checkboxId = useId();

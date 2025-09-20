@@ -7,8 +7,8 @@ import {
 	StartLiveSearch,
 	StopLiveSearch,
 	UpdateTradeLink,
-} from "@wails/go/livesearch/Handler";
-import { livesearch } from "@wails/go/models";
+} from "~wails/go/livesearch/Handler";
+import { livesearch } from "~wails/go/models";
 
 import TradeLink = livesearch.TradeLink;
 

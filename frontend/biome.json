@@ -27,7 +27,20 @@
 		"enabled": true,
 		"actions": {
 			"source": {
-				"organizeImports": "on"
+				"organizeImports": {
+					"level": "on",
+					"options": {
+						"groups": [
+							["react", "react-*"],
+              ":PACKAGE:",
+              ":BLANK_LINE:",
+							["@/**"],
+              ":BLANK_LINE:",
+              ["~wails/**"],
+							["./**", "../**"]
+						]
+					}
+				}
 			}
 		}
 	}
