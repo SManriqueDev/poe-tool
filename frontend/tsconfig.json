@@ -2,7 +2,12 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@wails/*": [
+        "./wailsjs/*"
+      ]
     },
     "target": "ESNext",
     "useDefineForClassFields": true,
@@ -25,8 +30,12 @@
     "jsx": "react-jsx"
   },
   "include": [
-    "src"
-, "src/components/ui", "src/components/theme-provider.tsx", "src/components/mode-toggle.tsx"  ],
+    "src",
+    "wailsjs",
+    "src/components/ui",
+    "src/components/theme-provider.tsx",
+    "src/components/mode-toggle.tsx"
+  ],
   "references": [
     {
       "path": "./tsconfig.node.json"
