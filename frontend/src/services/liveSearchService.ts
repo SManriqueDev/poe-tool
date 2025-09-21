@@ -48,6 +48,15 @@ export async function isLiveSearchRunning(): Promise<boolean> {
 	return Handler.IsLiveSearchRunning();
 }
 
+// These functions will be available after regenerating Wails bindings
+// export async function getHideoutQueueSize(): Promise<number> {
+// 	return Handler.GetHideoutQueueSize();
+// }
+
+// export async function isHideoutProcessing(): Promise<boolean> {
+// 	return Handler.IsHideoutProcessing();
+// }
+
 export async function getAllLinkStatuses(): Promise<Record<number, string>> {
 	return Handler.GetAllLinkStatuses();
 }

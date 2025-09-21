@@ -1,6 +1,7 @@
 package livesearch
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -19,18 +20,21 @@ import (
 const workerCount = 10 // Number of concurrent workers
 
 type Service struct {
-	links            []TradeLink
-	mu               sync.Mutex
-	settingsSvc      *settings.Service
-	loggingSvc       *logging.Service
-	liveSearchCancel context.CancelFunc
-	ctx              context.Context
-	repo             *Repository
-	wsClient         *WebSocketClient
-	eventBus         EventBus
-	liveSearchWG     *sync.WaitGroup
-	linkStatuses     map[int]string // In-memory storage for current link statuses
-	statusMu         sync.RWMutex   // Separate mutex for status operations
+	links             []TradeLink
+	mu                sync.Mutex
+	settingsSvc       *settings.Service
+	loggingSvc        *logging.Service
+	liveSearchCancel  context.CancelFunc
+	ctx               context.Context
+	repo              *Repository
+	wsClient          *WebSocketClient
+	eventBus          EventBus
+	liveSearchWG      *sync.WaitGroup
+	linkStatuses      map[int]string // In-memory storage for current link statuses
+	statusMu          sync.RWMutex   // Separate mutex for status operations
+	hideoutQueue      chan HideoutQueueItem
+	hideoutProcessing bool
+	hideoutMu         sync.Mutex
 }
 
 type WSMessage struct {
@@ -52,6 +56,38 @@ type ItemResult struct {
 	ID      string          `json:"id"`
 	Item    json.RawMessage `json:"item"`
 	Listing json.RawMessage `json:"listing"`
+}
+
+// Listing structure from PoE API that contains hideout_token
+type ListingData struct {
+	Method       string      `json:"method"`
+	Indexed      string      `json:"indexed"`
+	Stash        StashInfo   `json:"stash"`
+	HideoutToken string      `json:"hideout_token,omitempty"`
+	Whisper      string      `json:"whisper,omitempty"`
+	Account      AccountInfo `json:"account"`
+	Price        PriceInfo   `json:"price"`
+	Fee          int         `json:"fee,omitempty"`
+}
+
+// StashInfo represents stash information from PoE API
+type StashInfo struct {
+	Name string `json:"name"`
+	X    int    `json:"x"`
+	Y    int    `json:"y"`
+}
+
+// AccountInfo represents account information from PoE API
+type AccountInfo struct {
+	Name   string      `json:"name"`
+	Online interface{} `json:"online"` // Can be null or other values
+}
+
+// PriceInfo represents price information from PoE API
+type PriceInfo struct {
+	Type     string  `json:"type"`
+	Amount   float64 `json:"amount"`
+	Currency string  `json:"currency"`
 }
 
 func (s *Service) SetContext(ctx context.Context) {
@@ -226,10 +262,14 @@ func NewService(settingsSvc *settings.Service, loggingSvc *logging.Service) *Ser
 		wsClient:     NewWebSocketClient(),
 		eventBus:     &WailsEventBus{},
 		linkStatuses: make(map[int]string),
+		hideoutQueue: make(chan HideoutQueueItem, 100), // Buffer for 100 items
 	}
 
 	// Initialize go_to_hideout setting with default value false if it doesn't exist
 	_ = s.repo.InitializeLiveSearchSetting("go_to_hideout", false)
+
+	// Start hideout processing goroutine
+	go s.processHideoutQueue()
 
 	return s
 }
@@ -357,6 +397,9 @@ func (s *Service) StartLiveSearch() []TradeLink {
 				// Process each item and log it
 				for _, item := range itemResp.Result {
 					s.logNewItem(item, msg.SearchID, tradeLink)
+
+					// Process hideout token if available
+					s.processItemForHideout(item)
 				}
 			}
 		}()
@@ -540,4 +583,210 @@ func (s *Service) OpenLogsWindow() error {
 	// Esta función necesita acceso a la aplicación global
 	// La implementaremos desde el handler que puede importar main
 	return fmt.Errorf("use handler method instead")
+}
+
+// HideoutQueueItem represents an item waiting to go to hideout
+type HideoutQueueItem struct {
+	Token     string
+	ItemID    string
+	Timestamp time.Time
+}
+
+// GoToHideout makes a POST request to Path of Exile whisper API to teleport to hideout
+func (s *Service) GoToHideout(hideoutToken string) error {
+	// Get POESESSID from settings service
+	config := s.settingsSvc.Get()
+	if config == nil || config.PoeSessid == "" {
+		return fmt.Errorf("POESESSID not configured")
+	}
+
+	// Prepare request body
+	requestBody := map[string]interface{}{
+		"token":    hideoutToken,
+		"continue": true,
+	}
+
+	bodyBytes, err := json.Marshal(requestBody)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequest("POST", "https://www.pathofexile.com/api/trade2/whisper", bytes.NewBuffer(bodyBytes))
+
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers similar to the browser request you provided
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
+	req.Header.Set("User-Agent", uarand.GetRandom())
+	req.Header.Set("Cookie", "POESESSID="+config.PoeSessid)
+
+	// Make request
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return fmt.Errorf("failed to make hideout request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read hideout response: %w", err)
+	}
+
+	// Check response status
+	if resp.StatusCode != http.StatusOK {
+		// Try to parse error response
+		var errorResp struct {
+			Error struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+
+		errorMessage := fmt.Sprintf("HTTP %d", resp.StatusCode)
+		if json.Unmarshal(respBody, &errorResp) == nil && errorResp.Error.Message != "" {
+			errorMessage = errorResp.Error.Message
+		}
+
+		return fmt.Errorf("hideout request failed (status %d): %s", resp.StatusCode, errorMessage)
+	}
+
+	s.loggingSvc.Debug(logging.LogModuleLiveSearch, "Successfully sent hideout teleport request", map[string]interface{}{
+		"token": hideoutToken[:20] + "...", // Log only first 20 chars for security
+	})
+
+	return nil
+}
+
+// processHideoutQueue processes hideout requests sequentially with proper timing
+func (s *Service) processHideoutQueue() {
+	for item := range s.hideoutQueue {
+		s.hideoutMu.Lock()
+		s.hideoutProcessing = true
+		s.hideoutMu.Unlock()
+
+		// Log hideout attempt
+		s.loggingSvc.Info(logging.LogModuleLiveSearch, "Processing hideout teleport request", map[string]interface{}{
+			"item_id":   item.ItemID,
+			"timestamp": item.Timestamp,
+		})
+
+		// Make hideout request
+		err := s.GoToHideout(item.Token)
+		if err != nil {
+			s.loggingSvc.Error(logging.LogModuleLiveSearch, "Failed to teleport to hideout", map[string]interface{}{
+				"item_id": item.ItemID,
+				"error":   err.Error(),
+				"token":   item.Token[:20] + "...",
+			})
+		} else {
+			s.loggingSvc.Success(logging.LogModuleLiveSearch, "Successfully teleported to hideout", map[string]interface{}{
+				"item_id": item.ItemID,
+			})
+		}
+
+		// Wait before processing next item (configurable delay)
+		// This gives time to buy the item before going to the next hideout
+		config := s.settingsSvc.Get()
+		delay := 5 * time.Second // Default 5 seconds
+		if config != nil && config.Delay > 0 {
+			delay = time.Duration(config.Delay) * time.Millisecond
+		}
+		time.Sleep(delay)
+
+		s.hideoutMu.Lock()
+		s.hideoutProcessing = false
+		s.hideoutMu.Unlock()
+	}
+}
+
+// QueueHideoutVisit adds a hideout visit to the queue if go_to_hideout is enabled
+func (s *Service) QueueHideoutVisit(hideoutToken, itemID string) error {
+	// Check if go_to_hideout is enabled
+	enabled, err := s.GetGoToHideout()
+	if err != nil {
+		return fmt.Errorf("failed to check go_to_hideout setting: %w", err)
+	}
+
+	if !enabled {
+		return nil // Feature is disabled, ignore request
+	}
+
+	if hideoutToken == "" {
+		return fmt.Errorf("hideout token is empty")
+	}
+
+	// Create queue item
+	item := HideoutQueueItem{
+		Token:     hideoutToken,
+		ItemID:    itemID,
+		Timestamp: time.Now(),
+	}
+
+	// Add to queue (non-blocking)
+	select {
+	case s.hideoutQueue <- item:
+		s.loggingSvc.Debug(logging.LogModuleLiveSearch, "Added hideout visit to queue", map[string]interface{}{
+			"item_id":    itemID,
+			"queue_size": len(s.hideoutQueue),
+		})
+		return nil
+	default:
+		return fmt.Errorf("hideout queue is full")
+	}
+}
+
+// processItemForHideout extracts hideout_token from item listing and queues hideout visit
+func (s *Service) processItemForHideout(item ItemResult) {
+	// Check if go_to_hideout is enabled first
+	enabled, err := s.GetGoToHideout()
+	if err != nil {
+		return
+	}
+
+	if !enabled {
+		return
+	}
+
+	// Parse the listing JSON to extract hideout_token
+	var listing ListingData
+	err = json.Unmarshal(item.Listing, &listing)
+	if err != nil {
+		s.loggingSvc.Debug(logging.LogModuleLiveSearch, "Failed to parse listing data", map[string]interface{}{
+			"item_id": item.ID,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// If hideout_token is available, queue the hideout visit
+	if listing.HideoutToken != "" {
+		err := s.QueueHideoutVisit(listing.HideoutToken, item.ID)
+		if err != nil {
+			s.loggingSvc.Warning(logging.LogModuleLiveSearch, "Failed to queue hideout visit", map[string]interface{}{
+				"item_id": item.ID,
+				"error":   err.Error(),
+			})
+		}
+	}
+}
+
+// GetHideoutQueueSize returns the current number of items in the hideout queue
+func (s *Service) GetHideoutQueueSize() int {
+	return len(s.hideoutQueue)
+}
+
+// IsHideoutProcessing returns whether a hideout request is currently being processed
+func (s *Service) IsHideoutProcessing() bool {
+	s.hideoutMu.Lock()
+	defer s.hideoutMu.Unlock()
+	return s.hideoutProcessing
 }

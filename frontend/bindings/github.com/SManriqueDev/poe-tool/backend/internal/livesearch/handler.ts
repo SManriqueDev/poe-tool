@@ -27,6 +27,14 @@ export function GetGoToHideout(): $CancellablePromise<boolean> {
     return $Call.ByID(3389697673);
 }
 
+export function GetHideoutQueueSize(): $CancellablePromise<number> {
+    return $Call.ByID(1736301070);
+}
+
+export function IsHideoutProcessing(): $CancellablePromise<boolean> {
+    return $Call.ByID(2435293671);
+}
+
 export function IsLiveSearchRunning(): $CancellablePromise<boolean> {
     return $Call.ByID(940322137);
 }

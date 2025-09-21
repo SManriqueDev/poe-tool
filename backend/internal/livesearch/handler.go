@@ -58,6 +58,14 @@ func (h *Handler) GetAllLinkStatuses() map[int]string {
 	return h.svc.GetAllLinkStatuses()
 }
 
+func (h *Handler) GetHideoutQueueSize() int {
+	return h.svc.GetHideoutQueueSize()
+}
+
+func (h *Handler) IsHideoutProcessing() bool {
+	return h.svc.IsHideoutProcessing()
+}
+
 func (h *Handler) OpenLogsWindow() error {
 	return OpenLogsWindow()
 }
