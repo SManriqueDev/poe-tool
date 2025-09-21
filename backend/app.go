@@ -1,15 +1,12 @@
 package backend
 
 import (
-	"context"
-
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch"
 	"github.com/SManriqueDev/poe-tool/backend/internal/logging"
 	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
 )
 
 type App struct {
-	ctx               context.Context
 	SettingsHandler   *settings.Handler
 	LiveSearchHandler *livesearch.Handler
 	LoggingHandler    *logging.Handler
@@ -27,8 +24,7 @@ func NewApp() *App {
 	}
 }
 
-func (a *App) Startup(ctx context.Context) {
-	a.ctx = ctx
-	a.LiveSearchHandler.SetContext(ctx)
-	a.LoggingHandler.SetContext(ctx)
+func (a *App) Startup() {
+	// In v3, services can handle their own initialization
+	// Context will be provided by the Wails v3 runtime when needed
 }

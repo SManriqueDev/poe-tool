@@ -1,27 +1,31 @@
 package livesearch
 
 import (
-	"context"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type EventBus interface {
-	EmitStatusUpdate(ctx context.Context, link TradeLink)
-	EmitNewItems(ctx context.Context, searchID string, items []ItemResult)
+	EmitStatusUpdate(link TradeLink)
+	EmitNewItems(searchID string, items []ItemResult)
 }
 
-type WailsEventBus struct{}
+type WailsEventBus struct {
+	app *application.App
+}
 
-func (b *WailsEventBus) EmitStatusUpdate(ctx context.Context, link TradeLink) {
-	if ctx != nil {
-		runtime.EventsEmit(ctx, "linkStatusChanged", link)
+func NewWailsEventBus(app *application.App) *WailsEventBus {
+	return &WailsEventBus{app: app}
+}
+
+func (b *WailsEventBus) EmitStatusUpdate(link TradeLink) {
+	if b.app != nil {
+		b.app.Event.Emit("linkStatusChanged", link)
 	}
 }
 
-func (b *WailsEventBus) EmitNewItems(ctx context.Context, searchID string, items []ItemResult) {
-	if ctx != nil {
-		runtime.EventsEmit(ctx, "newItemsFound", map[string]interface{}{
+func (b *WailsEventBus) EmitNewItems(searchID string, items []ItemResult) {
+	if b.app != nil {
+		b.app.Event.Emit("newItemsFound", map[string]interface{}{
 			"searchID": searchID,
 			"items":    items,
 			"count":    len(items),

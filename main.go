@@ -6,9 +6,7 @@ import (
 
 	"github.com/SManriqueDev/poe-tool/backend"
 	"github.com/SManriqueDev/poe-tool/backend/db"
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 //go:embed all:frontend/dist
@@ -21,21 +19,41 @@ func main() {
 	}
 
 	app := backend.NewApp()
-	err = wails.Run(&options.App{
-		Title:  "Poe Tool",
-		Width:  1024,
-		Height: 768,
-		AssetServer: &assetserver.Options{
-			Assets: assets,
+
+	// Create a new Wails application
+	wailsApp := application.New(application.Options{
+		Name:        "Poe Tool",
+		Description: "A tool for Path of Exile game players to manage live searches",
+		Services: []application.Service{
+			application.NewService(app.SettingsHandler),
+			application.NewService(app.LiveSearchHandler),
+			application.NewService(app.LoggingHandler),
 		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		OnStartup:        app.Startup,
-		Bind: []interface{}{
-			app.SettingsHandler,
-			app.LiveSearchHandler,
-			app.LoggingHandler,
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
+		},
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
+
+	// Create a new window
+	wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title: "Poe Tool",
+		Mac: application.MacWindow{
+			InvisibleTitleBarHeight: 50,
+			Backdrop:                application.MacBackdropTranslucent,
+			TitleBar:                application.MacTitleBarHiddenInset,
+		},
+		BackgroundColour: application.NewRGB(27, 38, 54),
+		URL:              "/",
+	})
+
+	// Initialize the app startup
+	app.Startup()
+
+	// Run the application
+	err = wailsApp.Run()
 	if err != nil {
 		println("Error:", err.Error())
 	}

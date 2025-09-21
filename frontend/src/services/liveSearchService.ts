@@ -1,61 +1,48 @@
-import {
-	AddTradeLink,
-	DeleteTradeLink,
-	GetAllLinkStatuses,
-	GetGoToHideout,
-	IsLiveSearchRunning,
-	ListTradeLinks,
-	SetGoToHideout,
-	StartLiveSearch,
-	StopLiveSearch,
-	UpdateTradeLink,
-} from "~wails/go/livesearch/Handler";
-import { livesearch } from "~wails/go/models";
+import { Handler } from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/livesearch/index.js";
+import type * as models from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/livesearch/models.js";
 
-import TradeLink = livesearch.TradeLink;
+type TradeLink = models.TradeLink;
 
-export async function addTradeLink(
-	url: string,
-	description: string,
-): Promise<void> {
-	return AddTradeLink(url, description);
-}
+export const addTradeLink = async (url: string, description: string) => {
+	return Handler.AddTradeLink(url, description);
+};
 
 export async function deleteTradeLink(id: number): Promise<void> {
-	return DeleteTradeLink(id);
+	return Handler.DeleteTradeLink(id);
 }
 
 export async function updateTradeLink(
 	id: number,
 	link: TradeLink,
 ): Promise<void> {
-	return UpdateTradeLink(id, link.url, link.description, link.selected);
+	return Handler.UpdateTradeLink(id, link.url, link.description, link.selected);
 }
 
+
 export async function listTradeLinks(): Promise<TradeLink[]> {
-	return ListTradeLinks();
+	return Handler.ListTradeLinks();
 }
 
 export async function startLiveSearch() {
-	return StartLiveSearch();
+	return Handler.StartLiveSearch();
 }
 
 export async function stopLiveSearch() {
-	return StopLiveSearch();
+	return Handler.StopLiveSearch();
 }
 
 export async function setGoToHideout(enabled: boolean): Promise<void> {
-	return SetGoToHideout(enabled);
+	return Handler.SetGoToHideout(enabled);
 }
 
 export async function getGoToHideout(): Promise<boolean> {
-	return GetGoToHideout();
+	return Handler.GetGoToHideout();
 }
 
 export async function isLiveSearchRunning(): Promise<boolean> {
-	return IsLiveSearchRunning();
+	return Handler.IsLiveSearchRunning();
 }
 
 export async function getAllLinkStatuses(): Promise<Record<number, string>> {
-	return GetAllLinkStatuses();
+	return Handler.GetAllLinkStatuses();
 }

@@ -12,7 +12,13 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getLogStats, type LogConfig } from "@/services/loggingService";
+import { getLogStats } from "@/services/loggingService";
+
+import {
+	type LogConfig,
+	LogLevel,
+	LogModule,
+} from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/logging/models";
 
 interface LogConfigComponentProps {
 	onConfigChange?: (config: LogConfig) => void;
@@ -23,8 +29,8 @@ export function LogConfigComponent({
 }: LogConfigComponentProps) {
 	const [config, setConfig] = useState<LogConfig>({
 		enabled: true,
-		log_level: "info",
-		log_modules: ["livesearch"],
+		log_level: LogLevel.LogLevelInfo,
+		log_modules: [LogModule.LogModuleLiveSearch],
 		log_new_items: true,
 		log_api_requests: true,
 		log_websocket: true,
@@ -44,8 +50,19 @@ export function LogConfigComponent({
 	const retentionDaysId = useId();
 	const maxEntriesId = useId();
 
-	const logLevels = ["debug", "info", "warning", "error"];
-	const logModules = ["livesearch", "settings", "websocket", "api", "system"];
+	const logLevels = [
+		LogLevel.LogLevelDebug,
+		LogLevel.LogLevelInfo,
+		LogLevel.LogLevelWarning,
+		LogLevel.LogLevelError,
+	];
+	const logModules = [
+		LogModule.LogModuleLiveSearch,
+		LogModule.LogModuleSettings,
+		LogModule.LogModuleWebSocket,
+		LogModule.LogModuleAPI,
+		LogModule.LogModuleSystem,
+	];
 
 	const loadConfig = useCallback(async () => {
 		try {
@@ -76,9 +93,9 @@ export function LogConfigComponent({
 		handleConfigChange(newConfig);
 	};
 
-	const toggleModule = (module: string) => {
+	const toggleModule = (module: LogModule) => {
 		const newModules = config.log_modules.includes(module)
-			? config.log_modules.filter((m) => m !== module)
+			? config.log_modules.filter((m: LogModule) => m !== module)
 			: [...config.log_modules, module];
 		updateConfig({ log_modules: newModules });
 	};
@@ -134,7 +151,9 @@ export function LogConfigComponent({
 							<select
 								className="w-full p-2 border rounded"
 								value={config.log_level}
-								onChange={(e) => updateConfig({ log_level: e.target.value })}
+								onChange={(e) =>
+									updateConfig({ log_level: e.target.value as LogLevel })
+								}
 							>
 								{logLevels.map((level) => (
 									<option key={level} value={level}>

@@ -1,12 +1,9 @@
-import { settings } from "~wails/go/models";
-import { LoadConfig, SaveConfig } from "~wails/go/settings/Handler";
+import { Handler } from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/settings/index.js";
 
-import Config = settings.Config;
-
-export async function loadConfig(): Promise<Config> {
-	return await LoadConfig();
+export async function loadConfig(): Promise<any> {
+	return await Handler.LoadConfig();
 }
 
-export async function saveConfig(cfg: Config): Promise<void> {
-	await SaveConfig(cfg);
+export async function saveConfig(cfg: any): Promise<void> {
+	await Handler.SaveConfig(cfg);
 }

@@ -1,5 +1,6 @@
 import type React from "react";
 import { useEffect, useId, useState } from "react";
+import { Events } from "@wailsio/runtime";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -44,10 +45,7 @@ import {
 	parseMetadata,
 } from "@/services/loggingService";
 
-import { livesearch } from "~wails/go/models";
-import { EventsOn } from "~wails/runtime";
-
-import TradeLink = livesearch.TradeLink;
+type TradeLink = any;
 
 interface NewItemsEvent {
 	searchID: string;
@@ -142,17 +140,16 @@ export default function LiveSearch() {
 				console.error("Failed to load go to hideout setting:", error);
 			});
 
-		const offStatusChanged = EventsOn(
-			"linkStatusChanged",
-			(link: TradeLink) => {
-				console.log("Received linkStatusChanged event", link);
-				setLinks((prev) =>
-					prev.map((l) => (l.id === link.id ? { ...l, ...link } : l)),
-				);
-			},
-		);
+		const offStatusChanged = Events.On("linkStatusChanged", (ev: any) => {
+			const link = ev.data;
+			console.log("Received linkStatusChanged event", link);
+			setLinks((prev) =>
+				prev.map((l) => (l.id === link.id ? { ...l, ...link } : l)),
+			);
+		});
 
-		const offNewItems = EventsOn("newItemsFound", (data: NewItemsEvent) => {
+		const offNewItems = Events.On("newItemsFound", (ev: any) => {
+			const data = ev.data;
 			console.log(
 				"New items found for search",
 				data.searchID,

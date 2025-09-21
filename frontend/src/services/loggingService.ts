@@ -1,17 +1,5 @@
-import {
-	CleanupOldLogs,
-	ClearLogs,
-	GetLogConfig,
-	GetLogEntries,
-	GetLogEntriesCount,
-	GetLogLevels,
-	GetLogModules,
-	GetLogStats,
-	GetRecentLogs,
-	SearchLogs,
-	UpdateLogConfig,
-} from "../../wailsjs/go/logging/Handler";
-import { logging } from "../../wailsjs/go/models";
+import { Handler } from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/logging/index.js";
+import { LogConfig, LogLevel, LogModule } from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/logging/models.js";
 
 // Re-export types from Wails models for consistency
 export type LogEntry = {
@@ -34,18 +22,6 @@ export type LogFilter = {
 	offset?: number;
 };
 
-export type LogConfig = {
-	enabled: boolean;
-	log_level: string;
-	log_modules: string[];
-	log_new_items: boolean;
-	log_api_requests: boolean;
-	log_websocket: boolean;
-	retention_days: number;
-	max_entries: number;
-	real_time_updates: boolean;
-};
-
 export interface LogStats {
 	total_entries: number;
 	today_entries: number;
@@ -55,7 +31,7 @@ export interface LogStats {
 }
 
 // Helper function to convert Wails LogEntry to our LogEntry type
-function convertLogEntry(entry: logging.LogEntry): LogEntry {
+function convertLogEntry(entry: any): LogEntry {
 	return {
 		id: entry.id,
 		timestamp: entry.timestamp?.toString() || "",
@@ -68,15 +44,14 @@ function convertLogEntry(entry: logging.LogEntry): LogEntry {
 }
 
 // Helper function to convert our LogFilter to Wails LogFilter
-function convertLogFilter(filter: LogFilter): logging.LogFilter {
-	const wailsFilter = new logging.LogFilter();
-	wailsFilter.module = filter.module;
-	wailsFilter.level = filter.level;
-	wailsFilter.search = filter.search;
-	wailsFilter.limit = filter.limit;
-	wailsFilter.offset = filter.offset;
-	// Note: start_time and end_time would need proper Date conversion if used
-	return wailsFilter;
+function convertLogFilter(filter: LogFilter): any {
+	return {
+		module: filter.module,
+		level: filter.level,
+		search: filter.search,
+		limit: filter.limit,
+		offset: filter.offset,
+	};
 }
 
 // Logging service functions
@@ -85,7 +60,7 @@ export async function getLogEntries(
 ): Promise<LogEntry[]> {
 	try {
 		const wailsFilter = convertLogFilter(filter);
-		const entries = await GetLogEntries(wailsFilter);
+		const entries = await Handler.GetLogEntries(wailsFilter);
 		return entries.map(convertLogEntry);
 	} catch (error) {
 		console.error("Failed to get log entries:", error);
@@ -98,7 +73,7 @@ export async function getLogEntriesCount(
 ): Promise<number> {
 	try {
 		const wailsFilter = convertLogFilter(filter);
-		return await GetLogEntriesCount(wailsFilter);
+		return await Handler.GetLogEntriesCount(wailsFilter);
 	} catch (error) {
 		console.error("Failed to get log entries count:", error);
 		return 0;
@@ -107,7 +82,7 @@ export async function getLogEntriesCount(
 
 export async function getLogModules(): Promise<string[]> {
 	try {
-		return await GetLogModules();
+		return await Handler.GetLogModules();
 	} catch (error) {
 		console.error("Failed to get log modules:", error);
 		return ["livesearch", "settings", "websocket", "api", "system"];
@@ -116,7 +91,7 @@ export async function getLogModules(): Promise<string[]> {
 
 export async function getLogLevels(): Promise<string[]> {
 	try {
-		return await GetLogLevels();
+		return await Handler.GetLogLevels();
 	} catch (error) {
 		console.error("Failed to get log levels:", error);
 		return ["debug", "info", "warning", "error", "success"];
@@ -125,7 +100,7 @@ export async function getLogLevels(): Promise<string[]> {
 
 export async function getRecentLogs(): Promise<LogEntry[]> {
 	try {
-		const entries = await GetRecentLogs();
+		const entries = await Handler.GetRecentLogs();
 		return entries.map(convertLogEntry);
 	} catch (error) {
 		console.error("Failed to get recent logs:", error);
@@ -138,7 +113,7 @@ export async function searchLogs(
 	limit = 50,
 ): Promise<LogEntry[]> {
 	try {
-		const entries = await SearchLogs(searchText, limit);
+		const entries = await Handler.SearchLogs(searchText, limit);
 		return entries.map(convertLogEntry);
 	} catch (error) {
 		console.error("Failed to search logs:", error);
@@ -148,7 +123,7 @@ export async function searchLogs(
 
 export async function clearLogs(): Promise<void> {
 	try {
-		await ClearLogs();
+		await Handler.ClearLogs();
 	} catch (error) {
 		console.error("Failed to clear logs:", error);
 		throw error;
@@ -157,7 +132,7 @@ export async function clearLogs(): Promise<void> {
 
 export async function getLogStats(): Promise<LogStats> {
 	try {
-		const stats = await GetLogStats();
+		const stats = await Handler.GetLogStats();
 		// GetLogStats returns Record<string, any>, so we need to map it to our LogStats interface
 		return {
 			total_entries: stats.total_entries || 0,
@@ -166,8 +141,8 @@ export async function getLogStats(): Promise<LogStats> {
 			by_level: stats.by_level || {},
 			config: stats.config || {
 				enabled: true,
-				log_level: "info",
-				log_modules: ["livesearch"],
+				log_level: LogLevel.LogLevelInfo,
+				log_modules: [LogModule.LogModuleLiveSearch],
 				log_new_items: true,
 				log_api_requests: true,
 				log_websocket: true,
@@ -185,8 +160,8 @@ export async function getLogStats(): Promise<LogStats> {
 			by_level: {},
 			config: {
 				enabled: true,
-				log_level: "info",
-				log_modules: ["livesearch"],
+				log_level: LogLevel.LogLevelInfo,
+				log_modules: [LogModule.LogModuleLiveSearch],
 				log_new_items: true,
 				log_api_requests: true,
 				log_websocket: true,
@@ -200,7 +175,7 @@ export async function getLogStats(): Promise<LogStats> {
 
 export async function getLogConfig(): Promise<LogConfig> {
 	try {
-		const config = await GetLogConfig();
+		const config = await Handler.GetLogConfig();
 		return {
 			enabled: config.enabled,
 			log_level: config.log_level,
@@ -216,8 +191,8 @@ export async function getLogConfig(): Promise<LogConfig> {
 		console.error("Failed to get log config:", error);
 		return {
 			enabled: true,
-			log_level: "info",
-			log_modules: ["livesearch"],
+			log_level: LogLevel.LogLevelInfo,
+			log_modules: [LogModule.LogModuleLiveSearch],
 			log_new_items: true,
 			log_api_requests: true,
 			log_websocket: true,
@@ -230,7 +205,7 @@ export async function getLogConfig(): Promise<LogConfig> {
 
 export async function updateLogConfig(config: LogConfig): Promise<void> {
 	try {
-		const wailsConfig = new logging.LogConfig();
+		const wailsConfig = new LogConfig();
 		wailsConfig.enabled = config.enabled;
 		wailsConfig.log_level = config.log_level;
 		wailsConfig.log_modules = config.log_modules;
@@ -241,7 +216,7 @@ export async function updateLogConfig(config: LogConfig): Promise<void> {
 		wailsConfig.max_entries = config.max_entries;
 		wailsConfig.real_time_updates = config.real_time_updates;
 
-		await UpdateLogConfig(wailsConfig);
+		await Handler.UpdateLogConfig(wailsConfig);
 	} catch (error) {
 		console.error("Failed to update log config:", error);
 		throw error;
@@ -250,7 +225,7 @@ export async function updateLogConfig(config: LogConfig): Promise<void> {
 
 export async function cleanupOldLogs(): Promise<void> {
 	try {
-		await CleanupOldLogs();
+		await Handler.CleanupOldLogs();
 	} catch (error) {
 		console.error("Failed to cleanup old logs:", error);
 		throw error;
