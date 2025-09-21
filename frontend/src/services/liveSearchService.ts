@@ -18,7 +18,6 @@ export async function updateTradeLink(
 	return Handler.UpdateTradeLink(id, link.url, link.description, link.selected);
 }
 
-
 export async function listTradeLinks(): Promise<TradeLink[]> {
 	return Handler.ListTradeLinks();
 }

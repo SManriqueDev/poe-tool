@@ -1,5 +1,9 @@
 import { Handler } from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/logging/index.js";
-import { LogConfig, LogLevel, LogModule } from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/logging/models.js";
+import {
+	LogConfig,
+	LogLevel,
+	LogModule,
+} from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/logging/models.js";
 
 // Re-export types from Wails models for consistency
 export type LogEntry = {
