@@ -148,15 +148,9 @@ export default function LiveSearch() {
 			);
 		});
 
-		const offNewItems = Events.On("newItemsFound", (ev: any) => {
-			const data = ev.data;
-			console.log(
-				"New items found for search",
-				data.searchID,
-				"- Count:",
-				data.count,
-			);
-			console.log("Items:", data.items);
+		const offNewItems = Events.On("livesearch:newItemsFound", (ev: any) => {
+			// In Wails v3, the actual data is in ev.data[0]
+			const data = ev.data[0] || ev.data;
 
 			// Show toast notification
 			toast(`Found ${data.count} new item${data.count > 1 ? "s" : ""}!`, {

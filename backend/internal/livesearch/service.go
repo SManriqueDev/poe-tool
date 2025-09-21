@@ -328,7 +328,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 				log.Printf("Successfully fetched %d items for search %s", len(itemResp.Result), msg.SearchID)
 
 				// Emit event with new items for frontend
-				s.eventBus.EmitNewItems(msg.SearchID, itemResp.Result)
+				s.eventBus.EmitNewItems(s.ctx, msg.SearchID, itemResp.Result)
 
 				// Find the trade link for more context
 				var tradeLink *TradeLink
@@ -376,7 +376,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 						statusLinks[idx].Status = "error"
 						s.UpdateLinkStatus(statusLinks[idx].ID, "error")
 					}
-					s.eventBus.EmitStatusUpdate(statusLinks[idx])
+					s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 				}
 				return
 			}
@@ -393,7 +393,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 				statusCh <- func() {
 					statusLinks[idx].Status = "auth_error"
 					s.UpdateLinkStatus(statusLinks[idx].ID, "auth_error")
-					s.eventBus.EmitStatusUpdate(statusLinks[idx])
+					s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 				}
 				return
 			}
@@ -402,7 +402,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 			statusCh <- func() {
 				statusLinks[idx].Status = "ok"
 				s.UpdateLinkStatus(statusLinks[idx].ID, "ok")
-				s.eventBus.EmitStatusUpdate(statusLinks[idx])
+				s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 			}
 
 			// Bucle de lectura
@@ -412,7 +412,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 					statusCh <- func() {
 						statusLinks[idx].Status = "idle"
 						s.UpdateLinkStatus(statusLinks[idx].ID, "idle")
-						s.eventBus.EmitStatusUpdate(statusLinks[idx])
+						s.eventBus.EmitStatusUpdate(s.ctx, statusLinks[idx])
 					}
 					return
 				default:
@@ -460,7 +460,7 @@ func (s *Service) StopLiveSearch() {
 		for _, link := range links {
 			link.Status = "idle"
 			s.UpdateLinkStatus(link.ID, "idle")
-			s.eventBus.EmitStatusUpdate(link)
+			s.eventBus.EmitStatusUpdate(s.ctx, link)
 		}
 	}
 	s.mu.Unlock()
