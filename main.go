@@ -9,6 +9,9 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
+// Variable global para acceder a la aplicación desde los servicios
+var appInstance *application.App
+
 //go:embed all:frontend/dist
 var assets embed.FS
 
@@ -36,6 +39,12 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
+
+	// Asignar la instancia de app a la variable global
+	appInstance = wailsApp
+
+	// Configurar la aplicación para que los servicios puedan acceder a la instancia
+	app.SetAppInstance(wailsApp)
 
 	// Create a new window
 	wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{

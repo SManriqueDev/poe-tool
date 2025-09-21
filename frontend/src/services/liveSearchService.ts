@@ -46,3 +46,7 @@ export async function isLiveSearchRunning(): Promise<boolean> {
 export async function getAllLinkStatuses(): Promise<Record<number, string>> {
 	return Handler.GetAllLinkStatuses();
 }
+
+export async function openLogsWindow(): Promise<void> {
+	return Handler.OpenLogsWindow();
+}

@@ -519,3 +519,10 @@ func (s *Service) ClearLinkStatuses() {
 	defer s.statusMu.Unlock()
 	s.linkStatuses = make(map[int]string)
 }
+
+// OpenLogsWindow abre una nueva ventana mostrando los logs de LiveSearch
+func (s *Service) OpenLogsWindow() error {
+	// Esta función necesita acceso a la aplicación global
+	// La implementaremos desde el handler que puede importar main
+	return fmt.Errorf("use handler method instead")
+}

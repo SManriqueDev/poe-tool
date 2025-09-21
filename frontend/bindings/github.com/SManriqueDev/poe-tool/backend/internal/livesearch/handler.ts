@@ -37,6 +37,10 @@ export function ListTradeLinks(): $CancellablePromise<$models.TradeLink[]> {
     });
 }
 
+export function OpenLogsWindow(): $CancellablePromise<void> {
+    return $Call.ByID(2916030603);
+}
+
 export function SetContext(): $CancellablePromise<void> {
     return $Call.ByID(472825787);
 }

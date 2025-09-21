@@ -33,6 +33,7 @@ import {
 	getAllLinkStatuses,
 	getGoToHideout,
 	listTradeLinks,
+	openLogsWindow,
 	setGoToHideout,
 	startLiveSearch,
 	stopLiveSearch,
@@ -96,6 +97,16 @@ export default function LiveSearch() {
 			await loadLiveSearchLogs();
 		}
 		setShowLogs(!showLogs);
+	};
+
+	// Open logs in new window
+	const handleOpenLogsWindow = async () => {
+		try {
+			await openLogsWindow();
+		} catch (error) {
+			console.error("Failed to open logs window:", error);
+			toast.error("Failed to open logs window");
+		}
 	};
 
 	useEffect(() => {
@@ -254,18 +265,27 @@ export default function LiveSearch() {
 				<CardHeader>
 					<div className="flex justify-between items-center">
 						<CardTitle>Live Search</CardTitle>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={toggleLogs}
-							disabled={logsLoading}
-						>
-							{logsLoading
-								? "Loading..."
-								: showLogs
-									? "Hide Logs"
-									: "View Logs"}
-						</Button>
+						<div className="flex gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={toggleLogs}
+								disabled={logsLoading}
+							>
+								{logsLoading
+									? "Loading..."
+									: showLogs
+										? "Hide Logs"
+										: "View Logs"}
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={handleOpenLogsWindow}
+							>
+								Open Logs Window
+							</Button>
+						</div>
 					</div>
 				</CardHeader>
 				<CardContent>

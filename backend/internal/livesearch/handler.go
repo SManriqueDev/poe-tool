@@ -57,3 +57,7 @@ func (h *Handler) IsLiveSearchRunning() bool {
 func (h *Handler) GetAllLinkStatuses() map[int]string {
 	return h.svc.GetAllLinkStatuses()
 }
+
+func (h *Handler) OpenLogsWindow() error {
+	return OpenLogsWindow()
+}

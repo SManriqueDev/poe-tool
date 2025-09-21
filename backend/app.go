@@ -4,6 +4,7 @@ import (
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch"
 	"github.com/SManriqueDev/poe-tool/backend/internal/logging"
 	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type App struct {
@@ -27,4 +28,11 @@ func NewApp() *App {
 func (a *App) Startup() {
 	// In v3, services can handle their own initialization
 	// Context will be provided by the Wails v3 runtime when needed
+}
+
+func (a *App) SetAppInstance(app *application.App) {
+	// Configurar la función para que livesearch pueda acceder a la aplicación
+	livesearch.GetAppInstance = func() *application.App {
+		return app
+	}
 }
