@@ -125,6 +125,24 @@ export default function LiveSearch() {
 		}
 	};
 
+	// Get badge color for log levels (consistent with LiveSearchLogsWindow)
+	const getLevelColor = (level: string) => {
+		switch (level.toLowerCase()) {
+			case "error":
+				return "destructive";
+			case "warn":
+			case "warning":
+			case "info":
+				return "secondary";
+			case "debug":
+				return "outline";
+			case "success":
+				return "default";
+			default:
+				return "outline";
+		}
+	};
+
 	useEffect(() => {
 		// Load trade links and their current statuses
 		Promise.all([listTradeLinks(), getAllLinkStatuses()])
@@ -414,16 +432,8 @@ export default function LiveSearch() {
 													</TableCell>
 													<TableCell>
 														<Badge
-															variant={
-																log.level === "error"
-																	? "destructive"
-																	: log.level === "warning"
-																		? "outline"
-																		: log.level === "success"
-																			? "default"
-																			: "secondary"
-															}
-															className="text-xs"
+															variant={getLevelColor(log.level)}
+															className="w-20 text-xs font-medium justify-center"
 														>
 															{log.level}
 														</Badge>
