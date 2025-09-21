@@ -39,7 +39,9 @@ func main() {
 
 	// Create a new window
 	wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Poe Tool",
+		Title:  "Poe Tool",
+		Width:  1024,
+		Height: 768,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
