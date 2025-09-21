@@ -30,7 +30,7 @@ func OpenLogsWindow() error {
 			TitleBar:                application.MacTitleBarDefault,
 		},
 		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              "/livesearch-logs",
+		URL:              "/#/livesearch-logs",
 		Width:            1000,
 		Height:           700,
 		MinWidth:         800,
