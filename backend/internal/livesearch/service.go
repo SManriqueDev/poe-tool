@@ -35,6 +35,8 @@ type Service struct {
 	hideoutQueue      chan HideoutQueueItem
 	hideoutProcessing bool
 	hideoutMu         sync.Mutex
+	processedItems    map[string]bool // Track processed items to avoid duplicates
+	processedItemsMu  sync.RWMutex    // Mutex for processed items map
 }
 
 type WSMessage struct {
@@ -255,14 +257,15 @@ func (s *Service) logNewItem(item ItemResult, searchID string, tradeLink *TradeL
 
 func NewService(settingsSvc *settings.Service, loggingSvc *logging.Service) *Service {
 	s := &Service{
-		links:        make([]TradeLink, 0),
-		settingsSvc:  settingsSvc,
-		loggingSvc:   loggingSvc,
-		repo:         NewRepository(),
-		wsClient:     NewWebSocketClient(),
-		eventBus:     &WailsEventBus{},
-		linkStatuses: make(map[int]string),
-		hideoutQueue: make(chan HideoutQueueItem, 100), // Buffer for 100 items
+		links:          make([]TradeLink, 0),
+		settingsSvc:    settingsSvc,
+		loggingSvc:     loggingSvc,
+		repo:           NewRepository(),
+		wsClient:       NewWebSocketClient(),
+		eventBus:       &WailsEventBus{},
+		linkStatuses:   make(map[int]string),
+		hideoutQueue:   make(chan HideoutQueueItem, 100), // Buffer for 100 items
+		processedItems: make(map[string]bool),           // Initialize processed items tracker
 	}
 
 	// Initialize go_to_hideout setting with default value false if it doesn't exist
@@ -331,6 +334,14 @@ func (s *Service) StartLiveSearch() []TradeLink {
 	s.liveSearchCancel = cancel
 	s.mu.Unlock()
 
+	// Clear processed items for new search session
+	s.processedItemsMu.Lock()
+	s.processedItems = make(map[string]bool)
+	s.processedItemsMu.Unlock()
+	
+	// Cleanup old processed items periodically
+	s.cleanupOldProcessedItems()
+
 	// Filtrar links seleccionados
 	var selectedLinks []TradeLink
 	for _, link := range links {
@@ -396,6 +407,24 @@ func (s *Service) StartLiveSearch() []TradeLink {
 
 				// Process each item and log it
 				for _, item := range itemResp.Result {
+					// Check if item was already processed
+					s.processedItemsMu.RLock()
+					alreadyProcessed := s.processedItems[item.ID]
+					s.processedItemsMu.RUnlock()
+
+					if alreadyProcessed {
+						s.loggingSvc.Debug(logging.LogModuleLiveSearch, "Skipping duplicate item", map[string]interface{}{
+							"item_id":   item.ID,
+							"search_id": msg.SearchID,
+						})
+						continue
+					}
+
+					// Mark item as processed
+					s.processedItemsMu.Lock()
+					s.processedItems[item.ID] = true
+					s.processedItemsMu.Unlock()
+
 					s.logNewItem(item, msg.SearchID, tradeLink)
 
 					// Process hideout token if available
@@ -666,6 +695,48 @@ func (s *Service) GoToHideout(hideoutToken string) error {
 	return nil
 }
 
+// isTemporaryHideoutError determines if a hideout error is temporary and shouldn't affect LiveSearch
+func (s *Service) isTemporaryHideoutError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errorMsg := err.Error()
+	
+	// Temporary/service errors that shouldn't stop LiveSearch
+	temporaryErrors := []string{
+		"status 503",                    // Service Temporarily Unavailable
+		"status 429",                    // Too Many Requests
+		"status 500",                    // Internal Server Error
+		"Temporarily Unavailable",      // PoE API message
+		"timeout",                       // Network timeouts
+		"connection refused",            // Connection issues
+		"no such host",                  // DNS issues
+	}
+
+	for _, tempError := range temporaryErrors {
+		if strings.Contains(errorMsg, tempError) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// cleanupOldProcessedItems removes old entries from processed items map to prevent memory leaks
+func (s *Service) cleanupOldProcessedItems() {
+	s.processedItemsMu.Lock()
+	defer s.processedItemsMu.Unlock()
+	
+	// If map gets too large, clear it (items are usually processed quickly)
+	if len(s.processedItems) > 10000 {
+		s.processedItems = make(map[string]bool)
+		s.loggingSvc.Debug(logging.LogModuleLiveSearch, "Cleaned up processed items cache", map[string]interface{}{
+			"reason": "Cache size exceeded 10000 items",
+		})
+	}
+}
+
 // processHideoutQueue processes hideout requests sequentially with proper timing
 func (s *Service) processHideoutQueue() {
 	for item := range s.hideoutQueue {
@@ -682,11 +753,29 @@ func (s *Service) processHideoutQueue() {
 		// Make hideout request
 		err := s.GoToHideout(item.Token)
 		if err != nil {
-			s.loggingSvc.Error(logging.LogModuleLiveSearch, "Failed to teleport to hideout", map[string]interface{}{
-				"item_id": item.ItemID,
-				"error":   err.Error(),
-				"token":   item.Token[:20] + "...",
+			// Determine if this is a temporary error that shouldn't affect LiveSearch status
+			isTemporaryError := s.isTemporaryHideoutError(err)
+			
+			logLevel := "Error"
+			if isTemporaryError {
+				logLevel = "Warning" // Temporary errors are warnings, not critical errors
+			}
+
+			s.loggingSvc.Error(logging.LogModuleLiveSearch, fmt.Sprintf("Failed to teleport to hideout (%s)", logLevel), map[string]interface{}{
+				"item_id":          item.ItemID,
+				"error":            err.Error(),
+				"token":            item.Token[:20] + "...",
+				"temporary_error":  isTemporaryError,
+				"continues_search": isTemporaryError,
 			})
+
+			// If it's a temporary error, log that LiveSearch continues normally
+			if isTemporaryError {
+				s.loggingSvc.Info(logging.LogModuleLiveSearch, "LiveSearch continues despite hideout error", map[string]interface{}{
+					"item_id": item.ItemID,
+					"reason":  "Temporary hideout service issue",
+				})
+			}
 		} else {
 			s.loggingSvc.Success(logging.LogModuleLiveSearch, "Successfully teleported to hideout", map[string]interface{}{
 				"item_id": item.ItemID,
