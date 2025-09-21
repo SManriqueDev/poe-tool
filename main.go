@@ -16,8 +16,11 @@ var appInstance *application.App
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
+
 func main() {
-	err := db.Init("poe_tool.db")
+	err := db.Init("poe_tool.db", migrationsFS)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
