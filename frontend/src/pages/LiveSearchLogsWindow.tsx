@@ -91,7 +91,7 @@ export default function LiveSearchLogsWindow() {
 			case "warning":
 				return "secondary";
 			case "info":
-				return "default";
+				return "secondary";
 			case "debug":
 				return "outline";
 			case "success":
@@ -168,9 +168,9 @@ export default function LiveSearchLogsWindow() {
 										>
 											<Badge
 												variant={getLevelColor(log.level)}
-												className="mt-0.5 text-xs"
+												className="w-20 text-xs font-medium justify-center mt-0.5"
 											>
-												{log.level.toUpperCase()}
+												{log.level}
 											</Badge>
 											<div className="flex-1 min-w-0">
 												<div className="flex items-center gap-2 mb-2">
