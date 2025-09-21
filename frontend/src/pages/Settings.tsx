@@ -15,9 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { loadConfig, saveConfig } from "@/services/configService";
 
-import { settings } from "~wails/go/models";
-
-import Config = settings.Config;
+import { Config } from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/settings/models.js";
 // import DefaultTradeLink = settings.DefaultTradeLink;
 
 export default function Settings() {
@@ -36,17 +34,19 @@ export default function Settings() {
 	// const [defaultTradeLinks, _] = useState<DefaultTradeLink[]>([]); // Placeholder for future use
 
 	useEffect(() => {
-		loadConfig().then((cfg: Config) => {
-			setPoeSessid(cfg.poesessid || "");
-			setAccountName(cfg.accountName || "");
-			setLeague(cfg.league || "");
-			setAutomationEnabled(cfg.automationEnabled || false);
-			setDelay(cfg.delay || 1000);
+		loadConfig().then((cfg: Config | null) => {
+			if (cfg) {
+				setPoeSessid(cfg.poesessid || "");
+				setAccountName(cfg.accountName || "");
+				setLeague(cfg.league || "");
+				setAutomationEnabled(cfg.automationEnabled || false);
+				setDelay(cfg.delay || 1000);
+			}
 		});
 	}, []);
 
 	const handleSave = async () => {
-		const cfg = new settings.Config({
+		const cfg = new Config({
 			poesessid: poeSessid,
 			accountName,
 			league,

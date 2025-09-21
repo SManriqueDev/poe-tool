@@ -1,7 +1,13 @@
 import { Handler } from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/livesearch/index.js";
-import type * as models from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/livesearch/models.js";
 
-type TradeLink = models.TradeLink;
+// Define proper TradeLink interface based on the Go model
+export interface TradeLink {
+	id: number;
+	url: string;
+	description: string;
+	selected: boolean;
+	status: string;
+}
 
 export const addTradeLink = async (url: string, description: string) => {
 	return Handler.AddTradeLink(url, description);

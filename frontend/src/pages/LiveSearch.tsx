@@ -37,6 +37,7 @@ import {
 	setGoToHideout,
 	startLiveSearch,
 	stopLiveSearch,
+	type TradeLink,
 	updateTradeLink,
 } from "@/services/liveSearchService";
 import {
@@ -46,17 +47,32 @@ import {
 	parseMetadata,
 } from "@/services/loggingService";
 
-type TradeLink = any;
+// Type definitions for the application
+interface ItemResult {
+	id: string;
+	item: Record<string, unknown>;
+	listing: Record<string, unknown>;
+}
 
-interface NewItemsEvent {
+interface NewItemsFoundEventData {
 	searchID: string;
-	items: {
-		id: string;
-		item: Record<string, unknown>;
-		listing: Record<string, unknown>;
-	}[];
+	items: ItemResult[];
 	count: number;
 }
+
+interface WailsEvent<T = unknown> {
+	data: T[];
+}
+
+// interface NewItemsEvent {
+// 	searchID: string;
+// 	items: {
+// 		id: string;
+// 		item: Record<string, unknown>;
+// 		listing: Record<string, unknown>;
+// 	}[];
+// 	count: number;
+// }
 
 export default function LiveSearch() {
 	const checkboxId = useId();
@@ -151,30 +167,36 @@ export default function LiveSearch() {
 				console.error("Failed to load go to hideout setting:", error);
 			});
 
-		const offStatusChanged = Events.On("linkStatusChanged", (ev: any) => {
-			const link = ev.data;
-			console.log("Received linkStatusChanged event", link);
-			setLinks((prev) =>
-				prev.map((l) => (l.id === link.id ? { ...l, ...link } : l)),
-			);
-		});
+		const offStatusChanged = Events.On(
+			"linkStatusChanged",
+			(ev: WailsEvent<TradeLink>) => {
+				const link = ev.data[0] || ev.data;
+				console.log("Received linkStatusChanged event", link);
+				setLinks((prev) =>
+					prev.map((l) => (l.id === link.id ? { ...l, ...link } : l)),
+				);
+			},
+		);
 
-		const offNewItems = Events.On("livesearch:newItemsFound", (ev: any) => {
-			// In Wails v3, the actual data is in ev.data[0]
-			const data = ev.data[0] || ev.data;
+		const offNewItems = Events.On(
+			"livesearch:newItemsFound",
+			(ev: WailsEvent<NewItemsFoundEventData>) => {
+				// In Wails v3, the actual data is in ev.data[0]
+				const data = ev.data[0] || ev.data;
 
-			// Show toast notification
-			toast(`Found ${data.count} new item${data.count > 1 ? "s" : ""}!`, {
-				description: `Search ID: ${data.searchID}`,
-				action: {
-					label: "View",
-					onClick: () => {
-						// Here you could open a modal or navigate to item details
-						console.log("View items clicked", data.items);
+				// Show toast notification
+				toast(`Found ${data.count} new item${data.count > 1 ? "s" : ""}!`, {
+					description: `Search ID: ${data.searchID}`,
+					action: {
+						label: "View",
+						onClick: () => {
+							// Here you could open a modal or navigate to item details
+							console.log("View items clicked", data.items);
+						},
 					},
-				},
-			});
-		});
+				});
+			},
+		);
 
 		return () => {
 			offStatusChanged();

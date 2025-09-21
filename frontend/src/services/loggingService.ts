@@ -1,12 +1,16 @@
 import { Handler } from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/logging/index.js";
+import type {
+	LogEntry as WailsLogEntry,
+	LogFilter as WailsLogFilter,
+} from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/logging/models.js";
 import {
 	LogConfig,
 	LogLevel,
 	LogModule,
 } from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/logging/models.js";
 
-// Re-export types from Wails models for consistency
-export type LogEntry = {
+// Our frontend LogEntry interface
+export interface LogEntry {
 	id: number;
 	timestamp: string;
 	module: string;
@@ -14,17 +18,16 @@ export type LogEntry = {
 	message: string;
 	metadata: string;
 	created_at: string;
-};
+}
 
-export type LogFilter = {
+// Our frontend LogFilter interface
+export interface LogFilter {
 	module?: string;
 	level?: string;
-	start_time?: string;
-	end_time?: string;
 	search?: string;
 	limit?: number;
 	offset?: number;
-};
+}
 
 export interface LogStats {
 	total_entries: number;
@@ -35,7 +38,7 @@ export interface LogStats {
 }
 
 // Helper function to convert Wails LogEntry to our LogEntry type
-function convertLogEntry(entry: any): LogEntry {
+function convertLogEntry(entry: WailsLogEntry): LogEntry {
 	return {
 		id: entry.id,
 		timestamp: entry.timestamp?.toString() || "",
@@ -48,14 +51,22 @@ function convertLogEntry(entry: any): LogEntry {
 }
 
 // Helper function to convert our LogFilter to Wails LogFilter
-function convertLogFilter(filter: LogFilter): any {
+function convertLogFilter(filter: LogFilter): WailsLogFilter {
 	return {
-		module: filter.module,
-		level: filter.level,
+		module: filter.module as LogModule,
+		level: filter.level as LogLevel,
 		search: filter.search,
 		limit: filter.limit,
 		offset: filter.offset,
 	};
+}
+
+export interface LogStats {
+	total_entries: number;
+	today_entries: number;
+	by_module: Record<string, number>;
+	by_level: Record<string, number>;
+	config: LogConfig;
 }
 
 // Logging service functions
