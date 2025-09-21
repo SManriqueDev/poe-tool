@@ -265,7 +265,7 @@ func NewService(settingsSvc *settings.Service, loggingSvc *logging.Service) *Ser
 		eventBus:       &WailsEventBus{},
 		linkStatuses:   make(map[int]string),
 		hideoutQueue:   make(chan HideoutQueueItem, 100), // Buffer for 100 items
-		processedItems: make(map[string]bool),           // Initialize processed items tracker
+		processedItems: make(map[string]bool),            // Initialize processed items tracker
 	}
 
 	// Initialize go_to_hideout setting with default value false if it doesn't exist
@@ -338,7 +338,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 	s.processedItemsMu.Lock()
 	s.processedItems = make(map[string]bool)
 	s.processedItemsMu.Unlock()
-	
+
 	// Cleanup old processed items periodically
 	s.cleanupOldProcessedItems()
 
@@ -702,16 +702,16 @@ func (s *Service) isTemporaryHideoutError(err error) bool {
 	}
 
 	errorMsg := err.Error()
-	
+
 	// Temporary/service errors that shouldn't stop LiveSearch
 	temporaryErrors := []string{
-		"status 503",                    // Service Temporarily Unavailable
-		"status 429",                    // Too Many Requests
-		"status 500",                    // Internal Server Error
-		"Temporarily Unavailable",      // PoE API message
-		"timeout",                       // Network timeouts
-		"connection refused",            // Connection issues
-		"no such host",                  // DNS issues
+		"status 503",              // Service Temporarily Unavailable
+		"status 429",              // Too Many Requests
+		"status 500",              // Internal Server Error
+		"Temporarily Unavailable", // PoE API message
+		"timeout",                 // Network timeouts
+		"connection refused",      // Connection issues
+		"no such host",            // DNS issues
 	}
 
 	for _, tempError := range temporaryErrors {
@@ -727,7 +727,7 @@ func (s *Service) isTemporaryHideoutError(err error) bool {
 func (s *Service) cleanupOldProcessedItems() {
 	s.processedItemsMu.Lock()
 	defer s.processedItemsMu.Unlock()
-	
+
 	// If map gets too large, clear it (items are usually processed quickly)
 	if len(s.processedItems) > 10000 {
 		s.processedItems = make(map[string]bool)
@@ -755,7 +755,7 @@ func (s *Service) processHideoutQueue() {
 		if err != nil {
 			// Determine if this is a temporary error that shouldn't affect LiveSearch status
 			isTemporaryError := s.isTemporaryHideoutError(err)
-			
+
 			logLevel := "Error"
 			if isTemporaryError {
 				logLevel = "Warning" // Temporary errors are warnings, not critical errors
