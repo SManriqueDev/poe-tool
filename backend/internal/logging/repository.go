@@ -35,6 +35,36 @@ func (r *Repository) CreateLogEntry(entry LogEntry) error {
 	return err
 }
 
+// CreateLogEntryAndReturn creates a new log entry and returns it with the generated ID
+func (r *Repository) CreateLogEntryAndReturn(entry LogEntry) (*LogEntry, error) {
+	query := `
+		INSERT INTO logs (timestamp, module, level, message, metadata, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`
+
+	if entry.Timestamp.IsZero() {
+		entry.Timestamp = time.Now()
+	}
+	if entry.CreatedAt.IsZero() {
+		entry.CreatedAt = time.Now()
+	}
+
+	result, err := r.db.Exec(query, entry.Timestamp, entry.Module, entry.Level, entry.Message, entry.Metadata, entry.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the ID of the created entry
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the ID and return the entry
+	entry.ID = id
+	return &entry, nil
+}
+
 // GetLogEntries retrieves log entries based on filter
 func (r *Repository) GetLogEntries(filter LogFilter) ([]LogEntry, error) {
 	query := `

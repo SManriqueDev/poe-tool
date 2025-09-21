@@ -67,24 +67,23 @@ func (s *Service) Log(module LogModule, level LogLevel, message string, metadata
 		}
 	}
 
-	if err := s.repo.CreateLogEntry(entry); err != nil {
-		log.Printf("Failed to create log entry: %v", err)
-		return err
-	}
-
 	// Emit real-time update if enabled and for LiveSearch module
-	log.Printf("🔍 Debug: RealTimeUpdates=%v, ctx=%v, eventEmitter=%v, module=%v",
-		s.config.RealTimeUpdates, s.ctx != nil, s.eventEmitter != nil, module)
-
 	if s.config.RealTimeUpdates && s.ctx != nil && s.eventEmitter != nil && module == LogModuleLiveSearch {
+		// Create the log entry and get it back with the ID for event emission
+		createdEntry, err := s.repo.CreateLogEntryAndReturn(entry)
+		if err != nil {
+			log.Printf("Failed to create log entry: %v", err)
+			return err
+		}
+
 		log.Printf("✅ Emitting event for LiveSearch log")
-		// Get the created entry with ID from the database
-		moduleFilter := module
-		if entries, err := s.repo.GetLogEntries(LogFilter{Module: &moduleFilter, Limit: 1}); err == nil && len(entries) > 0 {
-			log.Printf("📤 Emitting livesearch:newLog event with entry: %+v", entries[0])
-			s.eventEmitter.EmitNewLog(s.ctx, entries[0])
-		} else {
-			log.Printf("❌ Failed to get log entry for event: %v", err)
+		log.Printf("📤 Emitting livesearch:newLog event with entry: %+v", *createdEntry)
+		s.eventEmitter.EmitNewLog(s.ctx, *createdEntry)
+	} else {
+		// Regular log creation without event emission
+		if err := s.repo.CreateLogEntry(entry); err != nil {
+			log.Printf("Failed to create log entry: %v", err)
+			return err
 		}
 	}
 
