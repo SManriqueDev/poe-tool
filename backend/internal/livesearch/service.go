@@ -619,6 +619,7 @@ type HideoutQueueItem struct {
 	Token     string
 	ItemID    string
 	Timestamp time.Time
+	Priority  bool // High priority items skip delay
 }
 
 // GoToHideout makes a POST request to Path of Exile whisper API to teleport to hideout
@@ -737,7 +738,7 @@ func (s *Service) cleanupOldProcessedItems() {
 	}
 }
 
-// processHideoutQueue processes hideout requests sequentially with proper timing
+// processHideoutQueue processes hideout requests sequentially with optimal competitive timing
 func (s *Service) processHideoutQueue() {
 	for item := range s.hideoutQueue {
 		s.hideoutMu.Lock()
@@ -746,8 +747,10 @@ func (s *Service) processHideoutQueue() {
 
 		// Log hideout attempt
 		s.loggingSvc.Info(logging.LogModuleLiveSearch, "Processing hideout teleport request", map[string]interface{}{
-			"item_id":   item.ItemID,
-			"timestamp": item.Timestamp,
+			"item_id":          item.ItemID,
+			"timestamp":        item.Timestamp,
+			"priority":         item.Priority,
+			"competitive_mode": true,
 		})
 
 		// Make hideout request
@@ -782,22 +785,30 @@ func (s *Service) processHideoutQueue() {
 			})
 		}
 
-		// Wait before processing next item (configurable delay)
-		// This gives time to buy the item before going to the next hideout
-		config := s.settingsSvc.Get()
-		delay := 5 * time.Second // Default 5 seconds
-		if config != nil && config.Delay > 0 {
-			delay = time.Duration(config.Delay) * time.Millisecond
+		// Realistic delay considering game loading screens and trading time
+		if item.Priority {
+			// Realistic delay for competitive teleportation considering:
+			// - Game loading screen: 1-3 seconds
+			// - Finding player in hideout: 1-2 seconds
+			// - Trade negotiation/completion: 3-5 seconds
+			// - Buffer for next teleport: 1-2 seconds
+			// Total: ~8-10 seconds minimum for realistic trading
+			time.Sleep(8 * time.Second)
+		} else {
+			// Fallback delay (should not occur in competitive mode)
+			config := s.settingsSvc.Get()
+			delay := 1 * time.Second
+			if config != nil && config.Delay > 0 {
+				delay = time.Duration(config.Delay) * time.Millisecond
+			}
+			time.Sleep(delay)
 		}
-		time.Sleep(delay)
 
 		s.hideoutMu.Lock()
 		s.hideoutProcessing = false
 		s.hideoutMu.Unlock()
 	}
-}
-
-// QueueHideoutVisit adds a hideout visit to the queue if go_to_hideout is enabled
+} // QueueHideoutVisit adds a hideout visit to the queue if go_to_hideout is enabled
 func (s *Service) QueueHideoutVisit(hideoutToken, itemID string) error {
 	// Check if go_to_hideout is enabled
 	enabled, err := s.GetGoToHideout()
@@ -813,19 +824,23 @@ func (s *Service) QueueHideoutVisit(hideoutToken, itemID string) error {
 		return fmt.Errorf("hideout token is empty")
 	}
 
-	// Create queue item
+	// Create queue item with priority for ALL items (competitive scenario)
 	item := HideoutQueueItem{
 		Token:     hideoutToken,
 		ItemID:    itemID,
 		Timestamp: time.Now(),
+		Priority:  true, // ALL items get priority for maximum competitiveness
 	}
 
 	// Add to queue (non-blocking)
 	select {
 	case s.hideoutQueue <- item:
-		s.loggingSvc.Debug(logging.LogModuleLiveSearch, "Added hideout visit to queue", map[string]interface{}{
-			"item_id":    itemID,
-			"queue_size": len(s.hideoutQueue),
+		s.loggingSvc.Info(logging.LogModuleLiveSearch, "Added hideout visit to queue", map[string]interface{}{
+			"item_id":          itemID,
+			"queue_size":       len(s.hideoutQueue),
+			"priority":         true,
+			"competitive_mode": true,
+			"delay_seconds":    8, // Realistic delay considering game loading and trading time
 		})
 		return nil
 	default:
