@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"log"
 
@@ -45,6 +46,10 @@ func main() {
 
 	// Configurar la aplicación para que los servicios puedan acceder a la instancia
 	app.SetAppInstance(wailsApp)
+
+	// Configurar contextos de los servicios
+	ctx := context.Background()
+	app.SetupContexts(ctx)
 
 	// Create a new window
 	wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{

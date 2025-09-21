@@ -56,6 +56,8 @@ type ItemResult struct {
 
 func (s *Service) SetContext(ctx context.Context) {
 	s.ctx = ctx
+	// También configurar el contexto en el servicio de logging
+	s.loggingSvc.SetContext(ctx)
 }
 
 // fetchItemDetails fetches item details from PoE API for given item IDs
@@ -230,6 +232,19 @@ func NewService(settingsSvc *settings.Service, loggingSvc *logging.Service) *Ser
 	_ = s.repo.InitializeLiveSearchSetting("go_to_hideout", false)
 
 	return s
+}
+
+// SetupEventEmitter configures the event emitter for real-time log updates
+func (s *Service) SetupEventEmitter(loggingSvc *logging.Service) {
+	loggingSvc.SetEventEmitter(s.eventBus)
+}
+
+// TestLogEvent creates a test log to verify real-time events are working
+func (s *Service) TestLogEvent() error {
+	return s.loggingSvc.Log(logging.LogModuleLiveSearch, logging.LogLevelInfo, "Test log event for real-time updates", map[string]interface{}{
+		"test":      true,
+		"timestamp": time.Now(),
+	})
 }
 
 func (s *Service) AddTradeLink(url string, description string) {

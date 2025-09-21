@@ -50,3 +50,7 @@ export async function getAllLinkStatuses(): Promise<Record<number, string>> {
 export async function openLogsWindow(): Promise<void> {
 	return Handler.OpenLogsWindow();
 }
+
+export async function testLogEvent(): Promise<void> {
+	return Handler.TestLogEvent();
+}

@@ -10,6 +10,7 @@ import (
 type EventBus interface {
 	EmitStatusUpdate(ctx context.Context, link TradeLink)
 	EmitNewItems(ctx context.Context, searchID string, items []ItemResult)
+	EmitNewLog(ctx context.Context, logEntry interface{})
 }
 
 type WailsEventBus struct {
@@ -36,4 +37,23 @@ func (b *WailsEventBus) EmitNewItems(ctx context.Context, searchID string, items
 		"items":    items,
 		"count":    len(items),
 	})
+}
+
+func (b *WailsEventBus) EmitNewLog(ctx context.Context, logEntry interface{}) {
+	app := application.Get()
+	if app == nil {
+		fmt.Printf("❌ Could not get application instance for EmitNewLog\n")
+		return
+	}
+
+	fmt.Printf("🚀 EventBus: Emitting livesearch:newLog event: %+v\n", logEntry)
+
+	// Verificar cuántas ventanas hay
+	windows := app.Window.GetAll()
+	fmt.Printf("🔍 Found %d windows before emitting event\n", len(windows))
+
+	// Emitir evento global
+	app.Event.Emit("livesearch:newLog", logEntry)
+
+	fmt.Printf("✅ EventBus: Event emitted successfully to all windows\n")
 }

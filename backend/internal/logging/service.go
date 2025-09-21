@@ -10,10 +10,11 @@ import (
 )
 
 type Service struct {
-	repo        *Repository
-	settingsSvc *settings.Service
-	ctx         context.Context
-	config      LogConfig
+	repo         *Repository
+	settingsSvc  *settings.Service
+	ctx          context.Context
+	config       LogConfig
+	eventEmitter EventEmitter
 }
 
 func NewService(settingsSvc *settings.Service) *Service {
@@ -27,6 +28,11 @@ func NewService(settingsSvc *settings.Service) *Service {
 	s.loadConfig()
 
 	return s
+}
+
+// SetEventEmitter sets the event emitter for real-time log updates
+func (s *Service) SetEventEmitter(emitter EventEmitter) {
+	s.eventEmitter = emitter
 }
 
 func (s *Service) SetContext(ctx context.Context) {
@@ -66,9 +72,20 @@ func (s *Service) Log(module LogModule, level LogLevel, message string, metadata
 		return err
 	}
 
-	// Emit real-time update if enabled
-	if s.config.RealTimeUpdates && s.ctx != nil {
-		// We'll add event emission later
+	// Emit real-time update if enabled and for LiveSearch module
+	log.Printf("🔍 Debug: RealTimeUpdates=%v, ctx=%v, eventEmitter=%v, module=%v",
+		s.config.RealTimeUpdates, s.ctx != nil, s.eventEmitter != nil, module)
+
+	if s.config.RealTimeUpdates && s.ctx != nil && s.eventEmitter != nil && module == LogModuleLiveSearch {
+		log.Printf("✅ Emitting event for LiveSearch log")
+		// Get the created entry with ID from the database
+		moduleFilter := module
+		if entries, err := s.repo.GetLogEntries(LogFilter{Module: &moduleFilter, Limit: 1}); err == nil && len(entries) > 0 {
+			log.Printf("📤 Emitting livesearch:newLog event with entry: %+v", entries[0])
+			s.eventEmitter.EmitNewLog(s.ctx, entries[0])
+		} else {
+			log.Printf("❌ Failed to get log entry for event: %v", err)
+		}
 	}
 
 	return nil

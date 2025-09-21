@@ -15,7 +15,7 @@ function App() {
 			<Routes>
 				{/* Rutas sin layout para ventanas independientes */}
 				<Route path="/livesearch-logs" element={<LiveSearchLogsWindow />} />
-				
+
 				{/* Rutas principales con layout */}
 				<Route
 					path="/*"

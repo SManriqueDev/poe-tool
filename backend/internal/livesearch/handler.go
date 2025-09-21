@@ -61,3 +61,16 @@ func (h *Handler) GetAllLinkStatuses() map[int]string {
 func (h *Handler) OpenLogsWindow() error {
 	return OpenLogsWindow()
 }
+
+func (h *Handler) TestLogEvent() error {
+	// Crear un log de prueba para testing
+	return h.svc.loggingSvc.LogItemFound(
+		"test-search-id",
+		"test-item-id",
+		"Test Item for Event Testing",
+		"Test League",
+		"http://test-url",
+		nil,
+		"Test item details for event debugging",
+	)
+}

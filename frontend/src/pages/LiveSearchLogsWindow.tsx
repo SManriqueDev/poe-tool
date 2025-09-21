@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Events } from "@wailsio/runtime";
 import { RefreshCw, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -31,11 +32,46 @@ export default function LiveSearchLogsWindow() {
 	}, []);
 
 	useEffect(() => {
+		// Carga inicial
 		loadLogs();
-		
-		// Refresh logs every 5 seconds for real-time updates
-		const interval = setInterval(loadLogs, 5000);
-		return () => clearInterval(interval);
+
+		console.log("🔍 Setting up livesearch:newLog event listener");
+
+		// Escuchar eventos de nuevos logs en tiempo real
+		const unsubscribe = Events.On("livesearch:newLog", (ev) => {
+			console.log("🔍 Evento livesearch:newLog recibido:", ev);
+			console.log("🔍 Event data:", ev.data);
+			console.log("🔍 Event data length:", ev.data?.length);
+			console.log("🔍 First element:", ev.data?.[0]);
+
+			// Los datos vienen como array, necesitamos el primer elemento
+			const newLog = ev.data?.[0] as LogEntry;
+			console.log("📨 Nuevo log recibido:", newLog);
+
+			if (newLog?.id) {
+				setLogs((prevLogs) => {
+					// Agregar el nuevo log al principio y limitar a 1000 entradas
+					const updatedLogs = [newLog, ...prevLogs].slice(0, 1000);
+					console.log(
+						"✅ Lista de logs actualizada, total:",
+						updatedLogs.length,
+					);
+					return updatedLogs;
+				});
+			} else {
+				console.error(
+					"❌ Evento recibido pero el log no tiene el formato esperado:",
+					newLog,
+				);
+			}
+		});
+
+		// Cleanup function
+		return () => {
+			if (unsubscribe) {
+				unsubscribe();
+			}
+		};
 	}, [loadLogs]);
 
 	const clearLogs = async () => {
@@ -76,10 +112,18 @@ export default function LiveSearchLogsWindow() {
 						</p>
 					</div>
 					<div className="flex gap-2">
-						<Button onClick={loadLogs} variant="outline" size="sm" disabled={loading}>
-							<RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+						<Button
+							onClick={loadLogs}
+							variant="outline"
+							size="sm"
+							disabled={loading}
+						>
+							<RefreshCw
+								className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+							/>
 							Refresh
 						</Button>
+
 						<Button onClick={clearLogs} variant="destructive" size="sm">
 							<Trash2 className="h-4 w-4 mr-2" />
 							Clear
@@ -122,17 +166,24 @@ export default function LiveSearchLogsWindow() {
 											key={`${log.id}-${log.timestamp}`}
 											className="flex items-start gap-3 p-4 rounded-lg border bg-card hover:bg-accent/30 transition-colors"
 										>
-											<Badge variant={getLevelColor(log.level)} className="mt-0.5 text-xs">
+											<Badge
+												variant={getLevelColor(log.level)}
+												className="mt-0.5 text-xs"
+											>
 												{log.level.toUpperCase()}
 											</Badge>
 											<div className="flex-1 min-w-0">
 												<div className="flex items-center gap-2 mb-2">
-													<span className="font-medium text-sm">{log.module}</span>
+													<span className="font-medium text-sm">
+														{log.module}
+													</span>
 													<span className="text-xs text-muted-foreground">
 														{new Date(log.timestamp).toLocaleString()}
 													</span>
 												</div>
-												<p className="text-sm break-words leading-relaxed">{log.message}</p>
+												<p className="text-sm break-words leading-relaxed">
+													{log.message}
+												</p>
 												{log.metadata && log.metadata.trim() !== "" && (
 													<div className="mt-3 p-3 bg-muted/50 rounded border text-xs font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">
 														{log.metadata}

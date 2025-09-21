@@ -59,6 +59,10 @@ export function StopLiveSearch(): $CancellablePromise<void> {
     return $Call.ByID(3475946234);
 }
 
+export function TestLogEvent(): $CancellablePromise<void> {
+    return $Call.ByID(3249663834);
+}
+
 export function UpdateTradeLink(id: number, url: string, description: string, selected: boolean): $CancellablePromise<void> {
     return $Call.ByID(1021348257, id, url, description, selected);
 }
