@@ -20,6 +20,10 @@ import (
 const workerCount = 10 // Number of concurrent workers
 
 type Service struct {
+	// Dependency managers
+	tradeLinkMgr *TradeLinkManager
+
+	// Legacy fields (will be refactored in future phases)
 	links             []TradeLink
 	mu                sync.Mutex
 	settingsSvc       *settings.Service
@@ -256,11 +260,17 @@ func (s *Service) logNewItem(item ItemResult, searchID string, tradeLink *TradeL
 }
 
 func NewService(settingsSvc *settings.Service, loggingSvc *logging.Service) *Service {
+	repo := NewRepository()
+
 	s := &Service{
+		// Initialize dependency managers
+		tradeLinkMgr: NewTradeLinkManager(WithTradeLinkRepository(repo)),
+
+		// Legacy fields (will be refactored in future phases)
 		links:          make([]TradeLink, 0),
 		settingsSvc:    settingsSvc,
 		loggingSvc:     loggingSvc,
-		repo:           NewRepository(),
+		repo:           repo,
 		wsClient:       NewWebSocketClient(),
 		eventBus:       &WailsEventBus{},
 		linkStatuses:   make(map[int]string),
@@ -291,29 +301,28 @@ func (s *Service) TestLogEvent() error {
 }
 
 func (s *Service) AddTradeLink(url string, description string) {
-	link := NewIdleTradeLink(url, description)
-	s.links = append(s.links, *link)
-	_ = s.repo.AddTradeLink(link.URL, link.Description)
+	// Delegate to TradeLinkManager
+	if err := s.tradeLinkMgr.Add(url, description); err != nil {
+		// Log error but maintain backward compatibility with original void return
+		s.loggingSvc.Error("livesearch", "Failed to add trade link", map[string]interface{}{
+			"url":         url,
+			"description": description,
+			"error":       err.Error(),
+		})
+	}
 }
 
 func (s *Service) ListTradeLinks() []TradeLink {
-	links, err := s.repo.GetTradeLinks()
+	// Delegate to TradeLinkManager
+	links, err := s.tradeLinkMgr.List()
 	if err != nil {
+		// Log error and return empty slice for backward compatibility
+		s.loggingSvc.Error("livesearch", "Failed to list trade links", map[string]interface{}{
+			"error": err.Error(),
+		})
 		return []TradeLink{}
 	}
-
-	var tradeLinks []TradeLink
-	for _, l := range links {
-		tl := NewTradeLink(
-			WithID(l.ID),
-			WithURL(l.URL),
-			WithDescription(l.Description),
-			WithSelected(l.Selected),
-			WithStatus("idle"),
-		)
-		tradeLinks = append(tradeLinks, *tl)
-	}
-	return append([]TradeLink{}, tradeLinks...)
+	return links
 }
 
 func (s *Service) StartLiveSearch() []TradeLink {
@@ -554,11 +563,13 @@ func (s *Service) StopLiveSearch() {
 }
 
 func (s *Service) UpdateTradeLink(id int, url string, description string, selected bool) error {
-	return s.repo.UpdateTradeLink(id, url, description, selected)
+	// Delegate to TradeLinkManager
+	return s.tradeLinkMgr.Update(id, url, description, selected)
 }
 
 func (s *Service) DeleteTradeLink(id int) error {
-	return s.repo.DeleteTradeLink(id)
+	// Delegate to TradeLinkManager
+	return s.tradeLinkMgr.Delete(id)
 }
 
 func (s *Service) SetGoToHideout(enabled bool) error {
