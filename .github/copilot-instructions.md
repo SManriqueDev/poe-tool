@@ -1,38 +1,57 @@
 # AI Coding Instructions for Poe Tool
 
 ## Project Overview
-**Poe Tool** is a Wails desktop application with a Go backend and React/TypeScript frontend. It's designed as a tool for Path of Exile game players to manage live searches for trade links. The app uses a modern stack: React 18, TypeScript, Shadcn UI, Tailwind CSS 4, and SQLite for persistence.
+**Poe Tool** is a Wails v3 desktop application with a Go backend and React/TypeScript frontend. It's designed as a Path of Exile trade automation tool featuring real-time live search monitoring and automatic hideout teleportation. The app uses a modern stack: React 18, TypeScript, Shadcn UI, Tailwind CSS 4, and SQLite for persistence.
 
 ## Architecture & Key Components
 
 ### Backend Structure (Go)
-- **Wails Framework**: Desktop app with embedded frontend (`main.go` embeds `frontend/dist`)
-- **Layered Architecture**: Handler → Service → Repository pattern
-- **Modules**: `livesearch` and `settings` in `backend/internal/`
-- **Database**: SQLite via `backend/db/database.go` with singleton pattern
-- **Context Flow**: App startup sets context, handlers receive it via `SetContext()`
+- **Wails v3 Framework**: Desktop app with embedded frontend (`main.go` embeds `frontend/dist`)
+- **Layered Architecture**: Handler → Service → Repository pattern with dependency injection
+- **Modules**: `livesearch`, `settings`, and `logging` in `backend/internal/`
+- **Database**: SQLite via `backend/db/database.go` with Goose migrations in `migrations/`
+- **Service Dependencies**: Cross-service injection (e.g., `livesearch` depends on `settings` and `logging`)
+- **Context Flow**: App startup creates services with dependencies, then sets contexts via `SetupContexts()`
 
 ### Frontend Structure (React/TypeScript)
 - **Build Tool**: Vite with TypeScript
 - **UI Framework**: Shadcn UI components on Tailwind CSS 4
 - **Layout**: `Layout.tsx` with sidebar navigation (`AppSidebar`)
-- **Wails Integration**: Generated bindings in `wailsjs/` for Go method calls
-- **Services**: TypeScript wrappers in `src/services/` for backend calls
+- **Wails Integration**: Generated bindings in `wailsjs/` for Go method calls (auto-regenerated with `wails3 dev`)
+- **Services**: TypeScript wrappers in `src/services/` for backend calls with type safety
+- **Real-time Updates**: Wails events for backend → frontend communication (e.g., `EventsOn("linkStatusChanged")`)
 
 ### Key Patterns
 
-#### Backend Service Pattern
+#### Backend Service Creation & Dependency Injection
 ```go
-// Services are created in backend/app.go and injected
-type Service struct {
-    repo *Repository
-    settingsSvc *settings.Service  // Cross-service dependencies
-}
+// Services created in backend/app.go with explicit dependency injection
+func NewApp() *App {
+    settingsService, _ := settings.NewService("PoeTool")
+    loggingService := logging.NewService(settingsService)      // depends on settings
+    lsService := livesearch.NewService(settingsService, loggingService)  // depends on both
 
-// Handlers expose methods to frontend
-type Handler struct {
-    svc *Service
+    // Configure cross-service communication
+    lsService.SetupEventEmitter(loggingService)
+
+    return &App{
+        SettingsHandler:   settings.NewHandler(settingsService),
+        LoggingHandler:    logging.NewHandler(loggingService),
+        LiveSearchHandler: livesearch.NewHandler(lsService),
+    }
 }
+```
+
+#### Wails v3 Service Binding Pattern
+```go
+// In main.go - services auto-bound to frontend
+wailsApp := application.New(application.Options{
+    Services: []application.Service{
+        application.NewService(app.SettingsHandler),
+        application.NewService(app.LiveSearchHandler),
+        application.NewService(app.LoggingHandler),  // New logging module
+    },
+})
 ```
 
 #### Frontend-Backend Communication
@@ -42,9 +61,10 @@ type Handler struct {
 - Real-time updates via Wails events: `EventsOn("linkStatusChanged", callback)`
 
 #### Database Conventions
-- SQLite with migrations in `migrations/` (Goose format)
-- Repository pattern for data access
-- Tables: `trade_links`, `settings`, `live_search_settings`
+- SQLite with migrations in `migrations/` (Goose format: `00001_create_tables.sql`)
+- Repository pattern for data access with standard CRUD methods
+- Tables: `trade_links`, `settings`, `live_search_settings`, `logs` (with performance indexes)
+- Settings stored as key-value pairs; logging with structured metadata
 
 ## Development Workflow
 
@@ -65,6 +85,10 @@ make check   # Biome auto-fix
 make build-mac     # macOS universal
 make build-windows # Windows x64
 make build-linux   # Linux x64
+
+# Alternative task-based builds (Wails v3)
+wails3 task build        # Current platform
+wails3 task windows:build # Cross-compile Windows
 ```
 
 ### Adding New Features
@@ -76,7 +100,7 @@ make build-linux   # Linux x64
 4. Database changes require migration in `migrations/`
 
 #### Frontend Changes
-1. Run `wails dev` to regenerate bindings after backend changes
+1. Run `wails3 dev` to regenerate bindings after backend changes
 2. Create service wrapper in `src/services/` for type safety
 3. Use Shadcn UI components: `npx shadcn-ui@latest add [component]`
 4. Follow the data table pattern (`src/live-search/`) for complex UIs
@@ -111,7 +135,7 @@ make build-linux   # Linux x64
 - Real-time updates broadcast via Wails events to frontend
 
 ### External Dependencies
-- **Go**: Wails v2, SQLite driver (`github.com/mattn/go-sqlite3`)
+- **Go**: Wails v3, SQLite driver (`github.com/mattn/go-sqlite3`)
 - **Frontend**: Wails runtime, Tanstack Table, Radix UI primitives
 - **Build**: Biome for code quality, Vite for bundling
 
@@ -124,8 +148,8 @@ make build-linux   # Linux x64
 - **Database**: Ensure `db.Init()` called before service creation in `main.go`
 
 ### Development Debugging
-- Use `wails dev` with browser at `:34115` for frontend debugging
-- Go backend logs appear in terminal running `wails dev`
+- Use `wails3 dev` with browser at `:34115` for frontend debugging
+- Go backend logs appear in terminal running `wails3 dev`
 - Database file `poe_tool.db` in project root for inspection
 
 ## Testing Strategy
