@@ -59,3 +59,32 @@ type Logger interface {
 	Warning(module, message string, metadata map[string]interface{}) error
 	Debug(module, message string, metadata map[string]interface{}) error
 }
+
+// WindowManager define el contrato para gestión de ventanas
+type WindowManager interface {
+	OpenLogsWindow(ctx context.Context) error
+	CloseWindow(ctx context.Context, windowID string) error
+	ShowWindow(ctx context.Context, windowID string) error
+	HideWindow(ctx context.Context, windowID string) error
+	GetActiveWindows(ctx context.Context) ([]WindowInfo, error)
+	BringToFront(ctx context.Context, windowID string) error
+}
+
+// HideoutAutomation define el contrato para automatización de hideout
+type HideoutAutomation interface {
+	ProcessHideoutVisit(ctx context.Context, hideoutToken, itemID string) error
+	QueueHideoutVisit(ctx context.Context, hideoutToken, itemID string) error
+	GetQueueSize(ctx context.Context) (int, error)
+	IsProcessing(ctx context.Context) (bool, error)
+	StartProcessingQueue(ctx context.Context) error
+	StopProcessingQueue(ctx context.Context) error
+	ClearQueue(ctx context.Context) error
+}
+
+// SystemAPIClient define el contrato para APIs del sistema (PoE API)
+type SystemAPIClient interface {
+	SendHideoutRequest(ctx context.Context, hideoutToken, poeSessid string) error
+	IsConnected(ctx context.Context) (bool, error)
+	GetSystemInfo(ctx context.Context) (*SystemInfo, error)
+	ValidatePoeSessid(ctx context.Context, poeSessid string) error
+}

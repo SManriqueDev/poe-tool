@@ -33,20 +33,30 @@ func NewApp() *App {
 	// FASE 2: Usar repositories domain puros en lugar de adapters legacy
 	domainTradeLinkRepo := adapters.NewDomainTradeLinkRepository()
 	domainLiveSearchRepo := adapters.NewDomainLiveSearchRepository()
-	
-	// Mantener adapters para logging, websocket y eventbus
-	loggerAdapter := adapters.NewLoggerAdapter(loggingService)
-	wsAdapter := adapters.NewWebSocketClientAdapter(lsService)
-	eventBusAdapter := adapters.NewEventBusAdapter(lsService.GetEventBus())
 
-	// Crear servicios de aplicación con repositories domain puros
+	// FASE 3: Usar factory para crear componentes domain-pure configurados
+	loggerAdapter := adapters.NewLoggerAdapter(loggingService)
+
+	// Crear factory con configuración por defecto
+	domainConfig := adapters.DefaultDomainConfig()
+	domainFactory := adapters.NewDomainComponentsFactory(domainConfig, loggerAdapter)
+
+	// Crear componentes domain-pure usando la factory
+	domainWebSocketClient := domainFactory.CreateWebSocketClient()
+	domainEventBus := domainFactory.CreateEventBus()
+	domainAPIClient := domainFactory.CreateAPIClient()
+
+	// Usar domainAPIClient para futuras implementaciones
+	_ = domainAPIClient
+
+	// Crear servicios de aplicación con dependencies domain-pure
 	tradeLinkAppSvc := lsapplication.NewTradeLinkApplicationService(domainTradeLinkRepo, loggerAdapter)
 	hideoutAppSvc := lsapplication.NewHideoutApplicationService(domainLiveSearchRepo, loggerAdapter)
 	liveSearchAppSvc := lsapplication.NewLiveSearchApplicationService(
 		domainTradeLinkRepo,
 		domainLiveSearchRepo,
-		wsAdapter,
-		eventBusAdapter,
+		domainWebSocketClient,
+		domainEventBus,
 		loggerAdapter,
 	)
 

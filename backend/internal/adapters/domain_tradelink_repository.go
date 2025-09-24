@@ -23,7 +23,7 @@ func NewDomainTradeLinkRepository() *DomainTradeLinkRepository {
 func (r *DomainTradeLinkRepository) GetActiveTradeLinks(ctx context.Context) ([]domain.TradeLink, error) {
 	query := `
 		SELECT id, url, description, selected, COALESCE(created_at, datetime('now'))
-		FROM trade_links 
+		FROM trade_links
 		WHERE selected = 1
 	`
 	rows, err := r.db.QueryContext(ctx, query)
@@ -59,7 +59,7 @@ func (r *DomainTradeLinkRepository) GetActiveTradeLinks(ctx context.Context) ([]
 func (r *DomainTradeLinkRepository) GetByID(ctx context.Context, id int) (*domain.TradeLink, error) {
 	query := `
 		SELECT id, url, description, selected, COALESCE(created_at, datetime('now'))
-		FROM trade_links 
+		FROM trade_links
 		WHERE id = ?
 	`
 	row := r.db.QueryRowContext(ctx, query, id)
@@ -110,8 +110,8 @@ func (r *DomainTradeLinkRepository) Create(ctx context.Context, tradeLink *domai
 // Update actualiza un trade link
 func (r *DomainTradeLinkRepository) Update(ctx context.Context, tradeLink *domain.TradeLink) error {
 	query := `
-		UPDATE trade_links 
-		SET url = ?, description = ?, selected = ? 
+		UPDATE trade_links
+		SET url = ?, description = ?, selected = ?
 		WHERE id = ?
 	`
 	result, err := r.db.ExecContext(ctx, query, tradeLink.URL, tradeLink.Description, r.boolToInt(tradeLink.Selected), tradeLink.ID)
