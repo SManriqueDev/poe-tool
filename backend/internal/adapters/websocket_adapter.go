@@ -83,5 +83,11 @@ func (a *WebSocketClientAdapter) GetMessageChannel() <-chan domain.ItemResult {
 	return a.messageChannel
 }
 
+// SetPOESESSID configura el POESESSID (no usado en adapter legacy)
+func (a *WebSocketClientAdapter) SetPOESESSID(poeSessID string) {
+	// El servicio legacy obtiene el POESESSID de la configuración directamente
+	// No necesitamos implementar nada aquí
+}
+
 // Verificar que implementa la interfaz
 var _ domain.WebSocketClient = (*WebSocketClientAdapter)(nil)

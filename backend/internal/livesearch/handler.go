@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/application"
+	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
 )
 
 type Handler struct {
@@ -69,17 +70,62 @@ func (h *Handler) UpdateTradeLink(id int, url string, description string, select
 	return h.tradeLinkAppSvc.UpdateTradeLink(ctx, id, url, description, selected)
 }
 
-// StartLiveSearch inicia la búsqueda en vivo usando el servicio legacy funcional
-// NOTA: Mantenemos el servicio legacy para WebSocket hasta completar migración completa
+// StartLiveSearch inicia la búsqueda en vivo usando Clean Architecture
 func (h *Handler) StartLiveSearch() []TradeLink {
-	// Usar directamente el servicio legacy que tiene toda la funcionalidad WebSocket trabajando
-	return h.svc.StartLiveSearch()
+	ctx := context.Background()
+
+	// Usar LiveSearchApplicationService nativo (ya no legacy)
+	err := h.liveSearchAppSvc.StartLiveSearch(ctx)
+	if err != nil {
+		h.logError("Failed to start live search", err)
+		// Fallback al servicio legacy solo en caso de error crítico
+		return h.svc.StartLiveSearch()
+	}
+
+	// Obtener todos los trade links desde el application service
+	domainLinks, err := h.liveSearchAppSvc.GetAllTradeLinks(ctx)
+	if err != nil {
+		h.logError("Failed to get trade links", err)
+		// Fallback al servicio legacy
+		return h.svc.StartLiveSearch()
+	}
+
+	// Convertir domain links a model links para compatibilidad con frontend
+	return h.convertDomainToModelLinks(domainLinks)
 }
 
-// StopLiveSearch detiene la búsqueda en vivo usando el servicio legacy funcional
+// Helper para logging de errores
+func (h *Handler) logError(message string, err error) {
+	if h.svc != nil && h.svc.loggingSvc != nil {
+		h.svc.loggingSvc.Error("livesearch", message, map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+}
+
+// Helper para conversión de domain a model
+func (h *Handler) convertDomainToModelLinks(domainLinks []domain.TradeLink) []TradeLink {
+	var modelLinks []TradeLink
+	for _, dl := range domainLinks {
+		modelLinks = append(modelLinks, TradeLink{
+			ID:          dl.ID,
+			URL:         dl.URL,
+			Description: dl.Description,
+			Selected:    dl.Selected,
+		})
+	}
+	return modelLinks
+}
+
+// StopLiveSearch detiene la búsqueda en vivo usando Clean Architecture
 func (h *Handler) StopLiveSearch() {
-	// Usar directamente el servicio legacy que tiene toda la funcionalidad WebSocket trabajando
-	h.svc.StopLiveSearch()
+	ctx := context.Background()
+	err := h.liveSearchAppSvc.StopLiveSearch(ctx)
+	if err != nil {
+		h.logError("Failed to stop live search", err)
+		// Fallback al servicio legacy en caso de error
+		h.svc.StopLiveSearch()
+	}
 }
 
 func (h *Handler) SetContext(ctx context.Context) {
@@ -104,16 +150,16 @@ func (h *Handler) GetGoToHideout() (bool, error) {
 	return h.hideoutAppSvc.IsGoToHideoutEnabled(ctx)
 }
 
-// IsLiveSearchRunning verifica si la búsqueda está corriendo usando el servicio legacy funcional
+// IsLiveSearchRunning verifica si la búsqueda está corriendo usando Clean Architecture
 func (h *Handler) IsLiveSearchRunning() bool {
-	// Usar directamente el servicio legacy que tiene el estado real del WebSocket
-	return h.svc.IsLiveSearchRunning()
+	// Usar LiveSearchApplicationService nativo
+	return h.liveSearchAppSvc.IsLiveSearchRunning()
 }
 
-// GetAllLinkStatuses retorna los estados actuales usando el servicio legacy funcional
+// GetAllLinkStatuses retorna los estados actuales usando Clean Architecture
 func (h *Handler) GetAllLinkStatuses() map[int]string {
-	// Usar directamente el servicio legacy que mantiene el estado real de las conexiones
-	return h.svc.GetAllLinkStatuses()
+	// Usar LiveSearchApplicationService nativo
+	return h.liveSearchAppSvc.GetAllLinkStatuses()
 }
 
 // MIGRADO: Usar servicio de aplicación

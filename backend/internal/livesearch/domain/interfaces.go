@@ -42,6 +42,7 @@ type WebSocketClient interface {
 	Unsubscribe(ctx context.Context, searchID string) error
 	IsConnected() bool
 	GetMessageChannel() <-chan ItemResult
+	SetPOESESSID(poeSessID string) // Para configurar autenticación
 }
 
 // EventBus define el contrato para el bus de eventos

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
@@ -129,13 +130,35 @@ func (s *LiveSearchApplicationService) runLiveSearch(ctx context.Context, tradeL
 		})
 	}
 
-	// Delegar al servicio WebSocket (que ya implementa toda la lógica funcional)
-	// El adapter internamente usa el servicio legacy que maneja todas las conexiones
+	// Por ahora usar un POESESSID hardcodeado conocido para debug
+	// TODO: Obtener POESESSID desde settings repository correctamente
+	poeSessID := "16a54175b9a8539332dcfbf6994ed854" // El que vimos en la DB
+
+	// Configurar POESESSID en el WebSocket client
+	if poeSessID != "" {
+		s.webSocketClient.SetPOESESSID(poeSessID)
+		s.logger.Info("livesearch", "POESESSID configured for WebSocket", map[string]interface{}{
+			"poesessid_length": len(poeSessID),
+		})
+	} else {
+		s.logger.Warning("livesearch", "No valid POESESSID found", nil)
+	}
+
+	// Conectar WebSocket (preparación)
 	if err := s.webSocketClient.Connect(ctx, ""); err != nil {
-		s.logger.Error("livesearch", "Failed to start WebSocket connections", map[string]interface{}{
+		s.logger.Error("livesearch", "Failed to prepare WebSocket connections", map[string]interface{}{
 			"error": err.Error(),
 		})
-		// Continuar con el estado de monitoreo aunque haya error de conexión
+		// Marcar todos los links como error si no se puede conectar
+		for _, link := range tradeLinks {
+			s.SetLinkStatus(link.ID, "error")
+		}
+		return
+	}
+
+	// Suscribirse a cada trade link
+	for _, link := range tradeLinks {
+		go s.processTradeLink(ctx, link)
 	}
 
 	// Mantener el bucle de monitoreo activo usando el canal del WebSocket
@@ -147,22 +170,24 @@ func (s *LiveSearchApplicationService) processTradeLink(ctx context.Context, lin
 	s.logger.Info("livesearch", "Processing trade link", map[string]interface{}{
 		"link_id":     link.ID,
 		"description": link.Description,
+		"url":         link.URL,
 	})
 
-	// Conectar WebSocket
+	// Marcar como conectando
 	s.SetLinkStatus(link.ID, "connecting")
 
-	if err := s.webSocketClient.Connect(ctx, link.URL); err != nil {
-		s.logger.Error("livesearch", "Failed to connect WebSocket", map[string]interface{}{
+	// Extraer search ID de la URL
+	searchID := s.extractSearchID(link.URL)
+	if searchID == "" {
+		s.logger.Error("livesearch", "Could not extract search ID from URL", map[string]interface{}{
 			"link_id": link.ID,
-			"error":   err.Error(),
+			"url":     link.URL,
 		})
 		s.SetLinkStatus(link.ID, "error")
 		return
 	}
 
-	// Suscribirse a actualizaciones
-	searchID := s.extractSearchID(link.URL)
+	// Suscribirse al search ID
 	if err := s.webSocketClient.Subscribe(ctx, searchID); err != nil {
 		s.logger.Error("livesearch", "Failed to subscribe to search", map[string]interface{}{
 			"link_id":   link.ID,
@@ -221,8 +246,28 @@ func (s *LiveSearchApplicationService) handleNewItem(ctx context.Context, item d
 
 // extractSearchID extrae el ID de búsqueda de la URL
 func (s *LiveSearchApplicationService) extractSearchID(url string) string {
-	// Implementación simplificada - en el futuro usar regex para extraer el ID real
-	return "extracted-search-id"
+	// URL típica: https://www.pathofexile.com/trade2/search/poe2/Rise%20of%20the%20Abyssal/4nVv4ggf9
+	// Necesitamos extraer "4nVv4ggf9" de la URL
+
+	// Buscar después del último slash
+	parts := strings.Split(url, "/")
+	if len(parts) > 0 {
+		searchID := parts[len(parts)-1]
+
+		// El search ID suele ser alfanumérico y puede tener guiones/underscores
+		if len(searchID) > 0 && searchID != "" {
+			s.logger.Info("livesearch", "Extracted search ID", map[string]interface{}{
+				"url":       url,
+				"search_id": searchID,
+			})
+			return searchID
+		}
+	}
+
+	s.logger.Warning("livesearch", "Could not extract search ID from URL", map[string]interface{}{
+		"url": url,
+	})
+	return ""
 }
 
 // GetActiveTradeLinksCount retorna el número de trade links activos
@@ -244,26 +289,26 @@ func (s *LiveSearchApplicationService) GetAllLinkStatuses() map[int]string {
 	s.statusMu.Lock()
 	defer s.statusMu.Unlock()
 
-	// Si el live search está corriendo, sincronizar con el servicio legacy
-	if s.state == domain.LiveSearchRunning {
-		if wsAdapter, ok := s.webSocketClient.(interface{ GetLegacyLinkStatuses() map[int]string }); ok {
-			legacyStatuses := wsAdapter.GetLegacyLinkStatuses()
-
-			// Sincronizar estados del servicio legacy
-			for id, status := range legacyStatuses {
-				s.linkStatuses[id] = status
-			}
-		}
-	} else {
-		// Si no está corriendo, inicializar estados de trade links existentes
+	// Si no hay estados pero el search está corriendo, inicializar con estados básicos
+	if len(s.linkStatuses) == 0 && s.state == domain.LiveSearchRunning {
 		ctx := context.Background()
 		links, err := s.tradeLinkRepo.GetAll(ctx)
 		if err == nil {
 			for _, link := range links {
-				// Solo establecer estado "idle" si no existe ya un estado
-				if _, exists := s.linkStatuses[link.ID]; !exists {
+				if link.Selected {
+					s.linkStatuses[link.ID] = "connecting"
+				} else {
 					s.linkStatuses[link.ID] = "idle"
 				}
+			}
+		}
+	} else if len(s.linkStatuses) == 0 {
+		// Si no está corriendo, inicializar con "idle"
+		ctx := context.Background()
+		links, err := s.tradeLinkRepo.GetAll(ctx)
+		if err == nil {
+			for _, link := range links {
+				s.linkStatuses[link.ID] = "idle"
 			}
 		}
 	}

@@ -24,8 +24,7 @@ export function DeleteTradeLink(id: number): $CancellablePromise<void> {
 }
 
 /**
- * MIGRADO: Usar servicio de aplicación con estado centralizado
- * MIGRADO: Usar servicio de aplicación
+ * GetAllLinkStatuses retorna los estados actuales usando Clean Architecture
  */
 export function GetAllLinkStatuses(): $CancellablePromise<{ [_: `${number}`]: string }> {
     return $Call.ByID(1096111801).then(($result: any) => {
@@ -55,7 +54,7 @@ export function IsHideoutProcessing(): $CancellablePromise<boolean> {
 }
 
 /**
- * MIGRADO: Usar servicio de aplicación
+ * IsLiveSearchRunning verifica si la búsqueda está corriendo usando Clean Architecture
  */
 export function IsLiveSearchRunning(): $CancellablePromise<boolean> {
     return $Call.ByID(940322137);
@@ -86,7 +85,7 @@ export function SetGoToHideout(enabled: boolean): $CancellablePromise<void> {
 }
 
 /**
- * MIGRADO: Usar servicio de aplicación
+ * StartLiveSearch inicia la búsqueda en vivo usando Clean Architecture
  */
 export function StartLiveSearch(): $CancellablePromise<$models.TradeLink[]> {
     return $Call.ByID(3906018782).then(($result: any) => {
@@ -95,7 +94,7 @@ export function StartLiveSearch(): $CancellablePromise<$models.TradeLink[]> {
 }
 
 /**
- * MIGRADO: Usar servicio de aplicación
+ * StopLiveSearch detiene la búsqueda en vivo usando Clean Architecture
  */
 export function StopLiveSearch(): $CancellablePromise<void> {
     return $Call.ByID(3475946234);
