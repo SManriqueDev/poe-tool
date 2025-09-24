@@ -104,7 +104,7 @@ func (c *DomainWebSocketClient) connectToSearchID(ctx context.Context, searchID,
 	header.Set("Origin", "https://www.pathofexile.com")
 	header.Set("User-Agent", uarand.GetRandom())
 	header.Set("Content-Type", "application/json")
-˝
+
 	// Conectar al WebSocket exactamente como el legacy service
 	conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL.String(), header)
 	if err != nil {

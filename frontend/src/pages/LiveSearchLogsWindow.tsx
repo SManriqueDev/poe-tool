@@ -35,32 +35,20 @@ export default function LiveSearchLogsWindow() {
 		// Carga inicial
 		loadLogs();
 
-		console.log("🔍 Setting up livesearch:newLog event listener");
-
 		// Escuchar eventos de nuevos logs en tiempo real
 		const unsubscribe = Events.On("livesearch:newLog", (ev) => {
-			console.log("🔍 Evento livesearch:newLog recibido:", ev);
-			console.log("🔍 Event data:", ev.data);
-			console.log("🔍 Event data length:", ev.data?.length);
-			console.log("🔍 First element:", ev.data?.[0]);
-
 			// Los datos vienen como array, necesitamos el primer elemento
 			const newLog = ev.data?.[0] as LogEntry;
-			console.log("📨 Nuevo log recibido:", newLog);
 
 			if (newLog?.id) {
 				setLogs((prevLogs) => {
 					// Agregar el nuevo log al principio y limitar a 1000 entradas
 					const updatedLogs = [newLog, ...prevLogs].slice(0, 1000);
-					console.log(
-						"✅ Lista de logs actualizada, total:",
-						updatedLogs.length,
-					);
 					return updatedLogs;
 				});
 			} else {
 				console.error(
-					"❌ Evento recibido pero el log no tiene el formato esperado:",
+					"Evento recibido pero el log no tiene el formato esperado:",
 					newLog,
 				);
 			}

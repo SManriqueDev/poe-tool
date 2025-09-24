@@ -54,7 +54,7 @@ func (s *LiveSearchApplicationService) StartLiveSearch(ctx context.Context) erro
 		return nil // Ya está corriendo
 	}
 
-	// Obtener trade links activos
+	// Obtener solo los trade links activos (seleccionados) para iniciar búsqueda
 	tradeLinks, err := s.tradeLinkRepo.GetActiveTradeLinks(ctx)
 	if err != nil {
 		s.logger.Error("livesearch", "Failed to get active trade links", map[string]interface{}{
@@ -67,7 +67,8 @@ func (s *LiveSearchApplicationService) StartLiveSearch(ctx context.Context) erro
 		return domain.ErrNoActiveTradeLinks
 	}
 
-	// Inicializar el estado de todos los links
+	// Inicializar el estado de SOLO los links SELECCIONADOS a "connecting"
+	// Los links NO seleccionados mantienen su estado actual sin cambios
 	for _, link := range tradeLinks {
 		s.SetLinkStatus(link.ID, "connecting")
 	}
@@ -101,7 +102,8 @@ func (s *LiveSearchApplicationService) StopLiveSearch(ctx context.Context) error
 		s.cancelFunc = nil
 	}
 
-	// Reiniciar el estado de todos los links a "idle"
+	// Resetear solo los links que estaban siendo monitoreados (los que están en memoria)
+	// Esto preserva el estado de los links no seleccionados
 	s.ResetAllLinkStatuses("idle")
 
 	s.state = domain.LiveSearchStopped
@@ -198,6 +200,8 @@ func (s *LiveSearchApplicationService) processTradeLink(ctx context.Context, lin
 		return
 	}
 
+	// Conexión exitosa, cambiar a estado conectado antes de monitoreo
+	s.SetLinkStatus(link.ID, "connected")
 	s.SetLinkStatus(link.ID, "monitoring")
 	s.logger.Info("livesearch", "Trade link monitoring started", map[string]interface{}{
 		"link_id":   link.ID,
@@ -289,21 +293,8 @@ func (s *LiveSearchApplicationService) GetAllLinkStatuses() map[int]string {
 	s.statusMu.Lock()
 	defer s.statusMu.Unlock()
 
-	// Si no hay estados pero el search está corriendo, inicializar con estados básicos
-	if len(s.linkStatuses) == 0 && s.state == domain.LiveSearchRunning {
-		ctx := context.Background()
-		links, err := s.tradeLinkRepo.GetAll(ctx)
-		if err == nil {
-			for _, link := range links {
-				if link.Selected {
-					s.linkStatuses[link.ID] = "connecting"
-				} else {
-					s.linkStatuses[link.ID] = "idle"
-				}
-			}
-		}
-	} else if len(s.linkStatuses) == 0 {
-		// Si no está corriendo, inicializar con "idle"
+	// Si el mapa está vacío, inicializarlo una sola vez con "idle" para todos
+	if len(s.linkStatuses) == 0 {
 		ctx := context.Background()
 		links, err := s.tradeLinkRepo.GetAll(ctx)
 		if err == nil {
@@ -318,6 +309,7 @@ func (s *LiveSearchApplicationService) GetAllLinkStatuses() map[int]string {
 	for id, status := range s.linkStatuses {
 		result[id] = status
 	}
+
 	return result
 }
 
@@ -345,5 +337,14 @@ func (s *LiveSearchApplicationService) ResetAllLinkStatuses(status string) {
 
 	for id := range s.linkStatuses {
 		s.linkStatuses[id] = status
+
+		// Emitir evento de cambio de estado para cada link
+		if err := s.eventBus.EmitLinkStatusChanged(context.Background(), id, status); err != nil {
+			s.logger.Error("livesearch", "Failed to emit link status changed in ResetAllLinkStatuses", map[string]interface{}{
+				"link_id": id,
+				"status":  status,
+				"error":   err.Error(),
+			})
+		}
 	}
 }

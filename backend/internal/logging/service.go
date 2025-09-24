@@ -76,8 +76,6 @@ func (s *Service) Log(module LogModule, level LogLevel, message string, metadata
 			return err
 		}
 
-		log.Printf("✅ Emitting event for LiveSearch log")
-		log.Printf("📤 Emitting livesearch:newLog event with entry: %+v", *createdEntry)
 		s.eventEmitter.EmitNewLog(s.ctx, *createdEntry)
 	} else {
 		// Regular log creation without event emission

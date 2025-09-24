@@ -147,14 +147,14 @@ export default function LiveSearch() {
 		// Load trade links and their current statuses
 		Promise.all([listTradeLinks(), getAllLinkStatuses()])
 			.then(([links, statuses]) => {
-				console.log("Fetched trade links", links);
-				console.log("Fetched link statuses", statuses);
-
 				// Apply statuses to links
-				const linksWithStatus = links.map((link) => ({
-					...link,
-					status: statuses[link.id] || link.status || "idle",
-				}));
+				const linksWithStatus = links.map((link) => {
+					const finalStatus = statuses[link.id] || link.status || "idle";
+					return {
+						...link,
+						status: finalStatus,
+					};
+				});
 
 				setLinks(linksWithStatus);
 			})
@@ -162,7 +162,6 @@ export default function LiveSearch() {
 				console.error("Failed to load trade links or statuses:", error);
 				// Fallback to just loading links
 				listTradeLinks().then((links) => {
-					console.log("Fetched trade links (fallback)", links);
 					setLinks(links);
 				});
 			});
@@ -189,10 +188,16 @@ export default function LiveSearch() {
 			"linkStatusChanged",
 			(ev: WailsEvent<TradeLink>) => {
 				const link = ev.data[0] || ev.data;
-				console.log("Received linkStatusChanged event", link);
-				setLinks((prev) =>
-					prev.map((l) => (l.id === link.id ? { ...l, ...link } : l)),
-				);
+				setLinks((prev) => {
+					const updated = prev.map((l) => {
+						if (l.id === link.id) {
+							// Solo actualizar el status, no sobrescribir todo el objeto
+							return { ...l, status: link.status };
+						}
+						return l;
+					});
+					return updated;
+				});
 			},
 		);
 
@@ -228,7 +233,14 @@ export default function LiveSearch() {
 		await addTradeLink(url, description);
 		setUrl("");
 		setDescription("");
-		setLinks(await listTradeLinks());
+		// Recargar links pero preservar statuses actuales
+		const newLinks = await listTradeLinks();
+		const statuses = await getAllLinkStatuses();
+		const linksWithStatus = newLinks.map((link) => ({
+			...link,
+			status: statuses[link.id] || link.status || "idle",
+		}));
+		setLinks(linksWithStatus);
 		toast("Link added!");
 	};
 
@@ -252,7 +264,14 @@ export default function LiveSearch() {
 			url: editUrl,
 			description: editDescription,
 		} as TradeLink);
-		setLinks(await listTradeLinks());
+		// Recargar links pero preservar statuses actuales
+		const newLinks = await listTradeLinks();
+		const statuses = await getAllLinkStatuses();
+		const linksWithStatus = newLinks.map((link) => ({
+			...link,
+			status: statuses[link.id] || link.status || "idle",
+		}));
+		setLinks(linksWithStatus);
 		setEditIdx(null);
 		toast("Link updated!");
 	};
@@ -265,8 +284,9 @@ export default function LiveSearch() {
 		setIsLiveSearchRunning(true);
 		toast("Starting live search for selected links...");
 		const updatedLinks = await startLiveSearch();
-		console.log("Live search started, updated links:", updatedLinks);
-		setLinks(updatedLinks);
+
+		// NO sobrescribir los links actuales - los status updates vendrán por eventos
+		// Solo verificar si hay errores de autenticación
 		if (updatedLinks.some((link) => link.status === "auth_error")) {
 			toast.error(
 				"Your POESESSID is invalid or expired. Please update it in settings.",
