@@ -3,8 +3,8 @@ package adapters
 import (
 	"context"
 
-	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch"
+	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
 )
 
 // LiveSearchRepositoryAdapter adapta las operaciones de configuración del livesearch
@@ -43,11 +43,16 @@ func (a *LiveSearchRepositoryAdapter) SetSetting(ctx context.Context, key string
 
 // GetHideoutSettings obtiene la configuración del hideout
 func (a *LiveSearchRepositoryAdapter) GetHideoutSettings(ctx context.Context) (*domain.HideoutSettings, error) {
+	// Primero, inicializar la configuración si no existe
+	if err := a.repo.InitializeLiveSearchSetting("go_to_hideout", false); err != nil {
+		return nil, err
+	}
+
 	enabled, err := a.repo.GetLiveSearchSetting("go_to_hideout")
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &domain.HideoutSettings{
 		Enabled: enabled,
 	}, nil

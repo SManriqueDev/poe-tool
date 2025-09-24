@@ -129,18 +129,16 @@ func (s *LiveSearchApplicationService) runLiveSearch(ctx context.Context, tradeL
 		})
 	}
 
-	// Procesar cada trade link
-	for _, link := range tradeLinks {
-		select {
-		case <-ctx.Done():
-			s.logger.Info("livesearch", "Live search cancelled", nil)
-			return
-		default:
-			s.processTradeLink(ctx, link)
-		}
+	// Delegar al servicio WebSocket (que ya implementa toda la lógica funcional)
+	// El adapter internamente usa el servicio legacy que maneja todas las conexiones
+	if err := s.webSocketClient.Connect(ctx, ""); err != nil {
+		s.logger.Error("livesearch", "Failed to start WebSocket connections", map[string]interface{}{
+			"error": err.Error(),
+		})
+		// Continuar con el estado de monitoreo aunque haya error de conexión
 	}
 
-	// Mantener el bucle de monitoreo activo
+	// Mantener el bucle de monitoreo activo usando el canal del WebSocket
 	s.monitorLiveSearch(ctx, tradeLinks)
 }
 
@@ -243,8 +241,20 @@ func (s *LiveSearchApplicationService) GetAllTradeLinks(ctx context.Context) ([]
 
 // GetAllLinkStatuses retorna el estado actual de todos los trade links
 func (s *LiveSearchApplicationService) GetAllLinkStatuses() map[int]string {
-	s.statusMu.RLock()
-	defer s.statusMu.RUnlock()
+	s.statusMu.Lock()
+	defer s.statusMu.Unlock()
+
+	// Si el live search está corriendo, sincronizar con el servicio legacy
+	if s.state == domain.LiveSearchRunning {
+		if wsAdapter, ok := s.webSocketClient.(interface{ GetLegacyLinkStatuses() map[int]string }); ok {
+			legacyStatuses := wsAdapter.GetLegacyLinkStatuses()
+
+			// Sincronizar estados del servicio legacy
+			for id, status := range legacyStatuses {
+				s.linkStatuses[id] = status
+			}
+		}
+	}
 
 	// Crear una copia del mapa para evitar race conditions
 	result := make(map[int]string)

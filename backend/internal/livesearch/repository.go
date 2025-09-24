@@ -101,8 +101,25 @@ func boolToInt(b bool) int {
 }
 
 func (r *Repository) SetLiveSearchSetting(name string, enabled bool) error {
-	_, err := r.db.Exec("INSERT OR REPLACE INTO live_search_settings (name, enabled) VALUES (?, ?)", name, boolToInt(enabled))
-	return err
+	// First try to update existing record
+	result, err := r.db.Exec("UPDATE live_search_settings SET enabled = ? WHERE name = ?", boolToInt(enabled), name)
+	if err != nil {
+		return err
+	}
+
+	// Check if any rows were affected
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	// If no rows were affected, insert new record
+	if rowsAffected == 0 {
+		_, err = r.db.Exec("INSERT INTO live_search_settings (name, enabled) VALUES (?, ?)", name, boolToInt(enabled))
+		return err
+	}
+
+	return nil
 }
 
 func (r *Repository) UpdateLiveSearchSetting(name string, enabled bool) error {

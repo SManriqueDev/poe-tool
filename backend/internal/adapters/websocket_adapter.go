@@ -2,43 +2,70 @@ package adapters
 
 import (
 	"context"
+	"sync"
 
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch"
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
 )
 
 // WebSocketClientAdapter adapta el WebSocketClient actual al contrato del dominio
-// Este es un adaptador simplificado que delega al Service actual
+// Delega la funcionalidad completa al Service legacy que tiene la implementación funcional
 type WebSocketClientAdapter struct {
-	service *livesearch.Service
+	service        *livesearch.Service
+	messageChannel chan domain.ItemResult
+	channelMu      sync.RWMutex
+	isStarted      bool
 }
 
 // NewWebSocketClientAdapter crea un nuevo adaptador para el cliente WebSocket
 func NewWebSocketClientAdapter(service *livesearch.Service) *WebSocketClientAdapter {
-	return &WebSocketClientAdapter{service: service}
+	return &WebSocketClientAdapter{
+		service:        service,
+		messageChannel: make(chan domain.ItemResult, 500), // Buffer para evitar bloqueos
+	}
 }
 
-// Connect se conecta usando la lógica actual del service
+// Connect delega al servicio legacy que maneja múltiples conexiones WebSocket
 func (a *WebSocketClientAdapter) Connect(ctx context.Context, url string) error {
-	// La conexión se maneja internamente por el Service actual
+	a.channelMu.Lock()
+	defer a.channelMu.Unlock()
+
+	if a.isStarted {
+		return nil // Ya está iniciado
+	}
+
+	// Iniciar el live search del servicio legacy
+	// Esto maneja todas las conexiones WebSocket automáticamente
+	a.service.StartLiveSearch()
+	a.isStarted = true
+
 	return nil
 }
 
-// Disconnect se desconecta usando la lógica actual del service
+// GetLegacyLinkStatuses obtiene los estados del servicio legacy para sincronización
+func (a *WebSocketClientAdapter) GetLegacyLinkStatuses() map[int]string {
+	return a.service.GetAllLinkStatuses()
+}
+
+// Disconnect delega al servicio legacy
 func (a *WebSocketClientAdapter) Disconnect(ctx context.Context) error {
-	// La desconexión se maneja internamente por el Service actual
+	a.service.StopLiveSearch()
+	a.channelMu.Lock()
+	defer a.channelMu.Unlock()
+	a.isStarted = false
 	return nil
 }
 
-// Subscribe se suscribe usando la lógica actual del service
+// Subscribe delega al servicio legacy que maneja todas las suscripciones
 func (a *WebSocketClientAdapter) Subscribe(ctx context.Context, searchID string) error {
-	// La suscripción se maneja internamente por el Service actual
+	// El servicio legacy maneja todas las suscripciones automáticamente
+	// Este método es parte del contrato pero no se usa individualmente
 	return nil
 }
 
-// Unsubscribe se desuscribe usando la lógica actual del service
+// Unsubscribe delega al servicio legacy
 func (a *WebSocketClientAdapter) Unsubscribe(ctx context.Context, searchID string) error {
-	// La desuscripción se maneja internamente por el Service actual
+	// Manejado por StopLiveSearch()
 	return nil
 }
 
@@ -47,13 +74,13 @@ func (a *WebSocketClientAdapter) IsConnected() bool {
 	return a.service.IsLiveSearchRunning()
 }
 
-// GetMessageChannel obtiene el canal de mensajes (simplificado)
+// GetMessageChannel obtiene el canal de mensajes
+// NOTA: El servicio legacy usa un patrón diferente (emite eventos directamente)
+// Para compatibilidad, devolvemos un canal que se puede usar en el futuro
 func (a *WebSocketClientAdapter) GetMessageChannel() <-chan domain.ItemResult {
-	// Por ahora devolvemos un canal vacío, ya que la lógica actual no expone un canal
-	// En una futura iteración se puede mejorar para exponer el canal real
-	ch := make(chan domain.ItemResult)
-	close(ch) // Canal cerrado para evitar bloqueos
-	return ch
+	a.channelMu.RLock()
+	defer a.channelMu.RUnlock()
+	return a.messageChannel
 }
 
 // Verificar que implementa la interfaz
