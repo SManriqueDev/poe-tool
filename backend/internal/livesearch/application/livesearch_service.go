@@ -19,6 +19,10 @@ type LiveSearchApplicationService struct {
 	state      domain.LiveSearchState
 	stateMu    sync.RWMutex
 	cancelFunc context.CancelFunc
+
+	// Link status tracking
+	linkStatuses map[int]string
+	statusMu     sync.RWMutex
 }
 
 // NewLiveSearchApplicationService crea una nueva instancia del servicio de aplicación
@@ -36,6 +40,7 @@ func NewLiveSearchApplicationService(
 		eventBus:        eventBus,
 		logger:          logger,
 		state:           domain.LiveSearchStopped,
+		linkStatuses:    make(map[int]string),
 	}
 }
 
@@ -59,6 +64,11 @@ func (s *LiveSearchApplicationService) StartLiveSearch(ctx context.Context) erro
 
 	if len(tradeLinks) == 0 {
 		return domain.ErrNoActiveTradeLinks
+	}
+
+	// Inicializar el estado de todos los links
+	for _, link := range tradeLinks {
+		s.SetLinkStatus(link.ID, "connecting")
 	}
 
 	// Crear contexto cancelable
@@ -90,6 +100,9 @@ func (s *LiveSearchApplicationService) StopLiveSearch(ctx context.Context) error
 		s.cancelFunc = nil
 	}
 
+	// Reiniciar el estado de todos los links a "idle"
+	s.ResetAllLinkStatuses("idle")
+
 	s.state = domain.LiveSearchStopped
 	s.logger.Info("livesearch", "Live search stopped", nil)
 
@@ -116,31 +129,102 @@ func (s *LiveSearchApplicationService) runLiveSearch(ctx context.Context, tradeL
 		})
 	}
 
-	// Por ahora, implementación básica que simula el proceso
-	// En futuras iteraciones se puede mover la lógica compleja desde service.go
+	// Procesar cada trade link
 	for _, link := range tradeLinks {
 		select {
 		case <-ctx.Done():
 			s.logger.Info("livesearch", "Live search cancelled", nil)
 			return
 		default:
-			// Procesar cada trade link
-			s.logger.Info("livesearch", "Processing trade link", map[string]interface{}{
-				"link_id":     link.ID,
-				"description": link.Description,
-			})
-
-			// Emitir evento de cambio de estado
-			if err := s.eventBus.EmitLinkStatusChanged(ctx, link.ID, "processing"); err != nil {
-				s.logger.Error("livesearch", "Failed to emit link status changed", map[string]interface{}{
-					"link_id": link.ID,
-					"error":   err.Error(),
-				})
-			}
+			s.processTradeLink(ctx, link)
 		}
 	}
 
-	s.logger.Info("livesearch", "Live search process completed", nil)
+	// Mantener el bucle de monitoreo activo
+	s.monitorLiveSearch(ctx, tradeLinks)
+}
+
+// processTradeLink procesa un trade link individual
+func (s *LiveSearchApplicationService) processTradeLink(ctx context.Context, link domain.TradeLink) {
+	s.logger.Info("livesearch", "Processing trade link", map[string]interface{}{
+		"link_id":     link.ID,
+		"description": link.Description,
+	})
+
+	// Conectar WebSocket
+	s.SetLinkStatus(link.ID, "connecting")
+
+	if err := s.webSocketClient.Connect(ctx, link.URL); err != nil {
+		s.logger.Error("livesearch", "Failed to connect WebSocket", map[string]interface{}{
+			"link_id": link.ID,
+			"error":   err.Error(),
+		})
+		s.SetLinkStatus(link.ID, "error")
+		return
+	}
+
+	// Suscribirse a actualizaciones
+	searchID := s.extractSearchID(link.URL)
+	if err := s.webSocketClient.Subscribe(ctx, searchID); err != nil {
+		s.logger.Error("livesearch", "Failed to subscribe to search", map[string]interface{}{
+			"link_id":   link.ID,
+			"search_id": searchID,
+			"error":     err.Error(),
+		})
+		s.SetLinkStatus(link.ID, "error")
+		return
+	}
+
+	s.SetLinkStatus(link.ID, "monitoring")
+	s.logger.Info("livesearch", "Trade link monitoring started", map[string]interface{}{
+		"link_id":   link.ID,
+		"search_id": searchID,
+	})
+}
+
+// monitorLiveSearch mantiene el monitoreo activo de los trade links
+func (s *LiveSearchApplicationService) monitorLiveSearch(ctx context.Context, tradeLinks []domain.TradeLink) {
+	s.logger.Info("livesearch", "Starting continuous monitoring", map[string]interface{}{
+		"active_links": len(tradeLinks),
+	})
+
+	// Obtener canal de mensajes del WebSocket
+	msgChannel := s.webSocketClient.GetMessageChannel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			s.logger.Info("livesearch", "Monitoring cancelled", nil)
+			return
+		case item, ok := <-msgChannel:
+			if !ok {
+				s.logger.Info("livesearch", "Message channel closed", nil)
+				return
+			}
+			s.handleNewItem(ctx, item)
+		}
+	}
+}
+
+// handleNewItem procesa un nuevo item encontrado
+func (s *LiveSearchApplicationService) handleNewItem(ctx context.Context, item domain.ItemResult) {
+	s.logger.Info("livesearch", "New item found", map[string]interface{}{
+		"item_id": item.ID,
+	})
+
+	// Emitir evento de nuevo item (por ahora con slice de un item)
+	items := []domain.ItemResult{item}
+	if err := s.eventBus.EmitNewItems(ctx, "live-search", items); err != nil {
+		s.logger.Error("livesearch", "Failed to emit new items", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+}
+
+// extractSearchID extrae el ID de búsqueda de la URL
+func (s *LiveSearchApplicationService) extractSearchID(url string) string {
+	// Implementación simplificada - en el futuro usar regex para extraer el ID real
+	return "extracted-search-id"
 }
 
 // GetActiveTradeLinksCount retorna el número de trade links activos
@@ -155,4 +239,44 @@ func (s *LiveSearchApplicationService) GetActiveTradeLinksCount(ctx context.Cont
 // GetAllTradeLinks retorna todos los trade links para mantener compatibilidad con handler
 func (s *LiveSearchApplicationService) GetAllTradeLinks(ctx context.Context) ([]domain.TradeLink, error) {
 	return s.tradeLinkRepo.GetAll(ctx)
+}
+
+// GetAllLinkStatuses retorna el estado actual de todos los trade links
+func (s *LiveSearchApplicationService) GetAllLinkStatuses() map[int]string {
+	s.statusMu.RLock()
+	defer s.statusMu.RUnlock()
+
+	// Crear una copia del mapa para evitar race conditions
+	result := make(map[int]string)
+	for id, status := range s.linkStatuses {
+		result[id] = status
+	}
+	return result
+}
+
+// SetLinkStatus actualiza el estado de un trade link específico
+func (s *LiveSearchApplicationService) SetLinkStatus(linkID int, status string) {
+	s.statusMu.Lock()
+	defer s.statusMu.Unlock()
+
+	s.linkStatuses[linkID] = status
+
+	// Emitir evento de cambio de estado
+	if err := s.eventBus.EmitLinkStatusChanged(context.Background(), linkID, status); err != nil {
+		s.logger.Error("livesearch", "Failed to emit link status changed", map[string]interface{}{
+			"link_id": linkID,
+			"status":  status,
+			"error":   err.Error(),
+		})
+	}
+}
+
+// ResetAllLinkStatuses reinicia el estado de todos los links
+func (s *LiveSearchApplicationService) ResetAllLinkStatuses(status string) {
+	s.statusMu.Lock()
+	defer s.statusMu.Unlock()
+
+	for id := range s.linkStatuses {
+		s.linkStatuses[id] = status
+	}
 }

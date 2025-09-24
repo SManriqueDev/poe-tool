@@ -50,6 +50,11 @@ func (m *MockTradeLinkRepository) List(ctx context.Context) ([]domain.TradeLink,
 	return args.Get(0).([]domain.TradeLink), args.Error(1)
 }
 
+func (m *MockTradeLinkRepository) GetAll(ctx context.Context) ([]domain.TradeLink, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]domain.TradeLink), args.Error(1)
+}
+
 type MockLogger struct {
 	mock.Mock
 }
