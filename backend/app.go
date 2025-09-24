@@ -44,9 +44,7 @@ func NewApp() *App {
 	domainEventBus := domainFactory.CreateEventBus()
 	domainAPIClient := domainFactory.CreateAPIClient()
 
-	// TODO: Estos se usarán cuando implementemos LiveSearchApplicationService
-	_ = domainWebSocketClient
-	_ = domainEventBus
+	// FASE 5: Usar todos los componentes domain en LiveSearchApplicationService
 	_ = domainAPIClient
 
 	domainSystemAPIClient := domainFactory.CreateSystemAPIClient()
@@ -55,13 +53,20 @@ func NewApp() *App {
 
 	tradeLinkAppSvc := lsapplication.NewTradeLinkApplicationService(domainTradeLinkRepo, loggerAdapter)
 	hideoutAppSvc := lsapplication.NewHideoutApplicationService(domainLiveSearchRepo, loggerAdapter)
-	// TODO: Crear LiveSearchApplicationService en próxima iteración
-	// liveSearchAppSvc := lsapplication.NewLiveSearchApplicationService(...)
+
+	// FASE 5: Crear LiveSearchApplicationService completo
+	liveSearchAppSvc := lsapplication.NewLiveSearchApplicationService(
+		domainTradeLinkRepo,
+		domainLiveSearchRepo,
+		domainWebSocketClient,
+		domainEventBus,
+		loggerAdapter,
+	)
 
 	return &App{
 		SettingsHandler:   settings.NewHandler(settingsService),
 		LoggingHandler:    logging.NewHandler(loggingService),
-		LiveSearchHandler: livesearch.NewHandler(lsService, tradeLinkAppSvc, hideoutAppSvc, nil), // nil temporalmente
+		LiveSearchHandler: livesearch.NewHandler(lsService, tradeLinkAppSvc, hideoutAppSvc, liveSearchAppSvc),
 
 		settingsService: settingsService,
 		loggingService:  loggingService,

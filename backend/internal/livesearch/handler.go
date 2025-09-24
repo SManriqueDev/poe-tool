@@ -69,15 +69,16 @@ func (h *Handler) UpdateTradeLink(id int, url string, description string, select
 	return h.tradeLinkAppSvc.UpdateTradeLink(ctx, id, url, description, selected)
 }
 
-// MIGRADO: Usar servicio de aplicación
+// StartLiveSearch inicia la búsqueda en vivo usando el servicio legacy funcional
+// NOTA: Mantenemos el servicio legacy para WebSocket hasta completar migración completa
 func (h *Handler) StartLiveSearch() []TradeLink {
-	// TEMP: Usar servicio legacy hasta completar migración de LiveSearchApplicationService
+	// Usar directamente el servicio legacy que tiene toda la funcionalidad WebSocket trabajando
 	return h.svc.StartLiveSearch()
 }
 
-// MIGRADO: Usar servicio de aplicación
+// StopLiveSearch detiene la búsqueda en vivo usando el servicio legacy funcional
 func (h *Handler) StopLiveSearch() {
-	// TEMP: Usar servicio legacy hasta completar migración
+	// Usar directamente el servicio legacy que tiene toda la funcionalidad WebSocket trabajando
 	h.svc.StopLiveSearch()
 }
 
@@ -103,16 +104,15 @@ func (h *Handler) GetGoToHideout() (bool, error) {
 	return h.hideoutAppSvc.IsGoToHideoutEnabled(ctx)
 }
 
-// MIGRADO: Usar servicio de aplicación
+// IsLiveSearchRunning verifica si la búsqueda está corriendo usando el servicio legacy funcional
 func (h *Handler) IsLiveSearchRunning() bool {
-	// TEMP: Usar servicio legacy hasta completar migración
+	// Usar directamente el servicio legacy que tiene el estado real del WebSocket
 	return h.svc.IsLiveSearchRunning()
 }
 
-// MIGRADO: Usar servicio de aplicación con estado centralizado
-// MIGRADO: Usar servicio de aplicación
+// GetAllLinkStatuses retorna los estados actuales usando el servicio legacy funcional
 func (h *Handler) GetAllLinkStatuses() map[int]string {
-	// TEMP: Usar servicio legacy hasta completar migración
+	// Usar directamente el servicio legacy que mantiene el estado real de las conexiones
 	return h.svc.GetAllLinkStatuses()
 }
 
