@@ -287,6 +287,12 @@ func NewService(settingsSvc *settings.Service, loggingSvc *logging.Service) *Ser
 	return s
 }
 
+// GetRepository retorna el repositorio para permitir crear adaptadores
+// TODO: Este método será eliminado una vez completada la migración a Clean Architecture
+func (s *Service) GetRepository() *Repository {
+	return s.repo
+}
+
 // SetupEventEmitter configures the event emitter for real-time log updates
 func (s *Service) SetupEventEmitter(loggingSvc *logging.Service) {
 	loggingSvc.SetEventEmitter(s.eventBus)

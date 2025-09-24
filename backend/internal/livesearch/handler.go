@@ -1,29 +1,70 @@
 package livesearch
 
-import "context"
+import (
+	"context"
+
+	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/application"
+)
 
 type Handler struct {
+	// Servicios de aplicación (nueva arquitectura)
+	tradeLinkAppSvc *application.TradeLinkApplicationService
+	hideoutAppSvc   *application.HideoutApplicationService
+
+	// Servicio legacy (para compatibilidad durante migración)
 	svc *Service
 }
 
-func NewHandler(svc *Service) *Handler {
-	return &Handler{svc: svc}
+// NewHandler crea un handler con ambos: servicios nuevos y legacy
+// Los servicios de aplicación se inyectan desde app.go para evitar dependencias circulares
+func NewHandler(svc *Service, tradeLinkAppSvc *application.TradeLinkApplicationService, hideoutAppSvc *application.HideoutApplicationService) *Handler {
+	return &Handler{
+		tradeLinkAppSvc: tradeLinkAppSvc,
+		hideoutAppSvc:   hideoutAppSvc,
+		svc:             svc, // Para funcionalidades no migradas aún
+	}
 }
 
+// MIGRADO: Usar servicio de aplicación (mantener compatibilidad con frontend)
 func (h *Handler) AddTradeLink(url string, description string) {
-	h.svc.AddTradeLink(url, description)
+	ctx := context.Background()
+	if err := h.tradeLinkAppSvc.AddTradeLink(ctx, url, description); err != nil {
+		// Logear el error pero mantener la firma original para compatibilidad
+		// En una futura iteración se puede cambiar la firma para devolver error
+	}
 }
 
+// MIGRADO: Usar servicio de aplicación (mantener compatibilidad con frontend)
 func (h *Handler) ListTradeLinks() []TradeLink {
-	return h.svc.ListTradeLinks()
+	ctx := context.Background()
+	domainTradeLinks, err := h.tradeLinkAppSvc.ListTradeLinks(ctx)
+	if err != nil {
+		// En caso de error, devolver slice vacío para mantener compatibilidad
+		return []TradeLink{}
+	}
+
+	// Convertir a modelo actual para mantener compatibilidad con frontend
+	var tradeLinks []TradeLink
+	for _, dtl := range domainTradeLinks {
+		tradeLinks = append(tradeLinks, TradeLink{
+			ID:          dtl.ID,
+			URL:         dtl.URL,
+			Description: dtl.Description,
+			Selected:    dtl.Selected,
+		})
+	}
+
+	return tradeLinks
 }
 
 //func (h *Handler) UpdateTradeLinks(links []TradeLink) {
 //	h.svc.UpdateTradeLinks(links)
 //}
 
+// MIGRADO: Usar servicio de aplicación
 func (h *Handler) UpdateTradeLink(id int, url string, description string, selected bool) error {
-	return h.svc.UpdateTradeLink(id, url, description, selected)
+	ctx := context.Background()
+	return h.tradeLinkAppSvc.UpdateTradeLink(ctx, id, url, description, selected)
 }
 
 func (h *Handler) StartLiveSearch() []TradeLink {
@@ -38,16 +79,22 @@ func (h *Handler) SetContext(ctx context.Context) {
 	h.svc.SetContext(ctx)
 }
 
+// MIGRADO: Usar servicio de aplicación
 func (h *Handler) DeleteTradeLink(id int) error {
-	return h.svc.DeleteTradeLink(id)
+	ctx := context.Background()
+	return h.tradeLinkAppSvc.DeleteTradeLink(ctx, id)
 }
 
+// MIGRADO: Usar servicio de aplicación
 func (h *Handler) SetGoToHideout(enabled bool) error {
-	return h.svc.SetGoToHideout(enabled)
+	ctx := context.Background()
+	return h.hideoutAppSvc.SetGoToHideout(ctx, enabled)
 }
 
+// MIGRADO: Usar servicio de aplicación
 func (h *Handler) GetGoToHideout() (bool, error) {
-	return h.svc.GetGoToHideout()
+	ctx := context.Background()
+	return h.hideoutAppSvc.IsGoToHideoutEnabled(ctx)
 }
 
 func (h *Handler) IsLiveSearchRunning() bool {

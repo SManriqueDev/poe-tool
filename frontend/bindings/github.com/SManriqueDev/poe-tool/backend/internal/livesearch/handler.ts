@@ -9,10 +9,16 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
+/**
+ * MIGRADO: Usar servicio de aplicación (mantener compatibilidad con frontend)
+ */
 export function AddTradeLink(url: string, description: string): $CancellablePromise<void> {
     return $Call.ByID(3596612099, url, description);
 }
 
+/**
+ * MIGRADO: Usar servicio de aplicación
+ */
 export function DeleteTradeLink(id: number): $CancellablePromise<void> {
     return $Call.ByID(2544351275, id);
 }
@@ -23,6 +29,9 @@ export function GetAllLinkStatuses(): $CancellablePromise<{ [_: `${number}`]: st
     });
 }
 
+/**
+ * MIGRADO: Usar servicio de aplicación
+ */
 export function GetGoToHideout(): $CancellablePromise<boolean> {
     return $Call.ByID(3389697673);
 }
@@ -39,6 +48,9 @@ export function IsLiveSearchRunning(): $CancellablePromise<boolean> {
     return $Call.ByID(940322137);
 }
 
+/**
+ * MIGRADO: Usar servicio de aplicación (mantener compatibilidad con frontend)
+ */
 export function ListTradeLinks(): $CancellablePromise<$models.TradeLink[]> {
     return $Call.ByID(2751393423).then(($result: any) => {
         return $$createType1($result);
@@ -53,6 +65,9 @@ export function SetContext(): $CancellablePromise<void> {
     return $Call.ByID(472825787);
 }
 
+/**
+ * MIGRADO: Usar servicio de aplicación
+ */
 export function SetGoToHideout(enabled: boolean): $CancellablePromise<void> {
     return $Call.ByID(3798349037, enabled);
 }
@@ -71,6 +86,9 @@ export function TestLogEvent(): $CancellablePromise<void> {
     return $Call.ByID(3249663834);
 }
 
+/**
+ * MIGRADO: Usar servicio de aplicación
+ */
 export function UpdateTradeLink(id: number, url: string, description: string, selected: boolean): $CancellablePromise<void> {
     return $Call.ByID(1021348257, id, url, description, selected);
 }

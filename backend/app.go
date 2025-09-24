@@ -3,7 +3,9 @@ package backend
 import (
 	"context"
 
+	"github.com/SManriqueDev/poe-tool/backend/internal/adapters"
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch"
+	lsapplication "github.com/SManriqueDev/poe-tool/backend/internal/livesearch/application"
 	"github.com/SManriqueDev/poe-tool/backend/internal/logging"
 	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -28,10 +30,19 @@ func NewApp() *App {
 	// Configure event emitter for real-time log updates
 	lsService.SetupEventEmitter(loggingService)
 
+	// Crear adaptadores para la nueva arquitectura
+	repoAdapter := adapters.NewRepositoryAdapter(lsService.GetRepository())
+	liveSearchRepoAdapter := adapters.NewLiveSearchRepositoryAdapter(lsService.GetRepository())
+	loggerAdapter := adapters.NewLoggerAdapter(loggingService)
+
+	// Crear servicios de aplicación
+	tradeLinkAppSvc := lsapplication.NewTradeLinkApplicationService(repoAdapter, loggerAdapter)
+	hideoutAppSvc := lsapplication.NewHideoutApplicationService(liveSearchRepoAdapter, loggerAdapter)
+
 	return &App{
 		SettingsHandler:   settings.NewHandler(settingsService),
 		LoggingHandler:    logging.NewHandler(loggingService),
-		LiveSearchHandler: livesearch.NewHandler(lsService),
+		LiveSearchHandler: livesearch.NewHandler(lsService, tradeLinkAppSvc, hideoutAppSvc),
 
 		// Store service references for context management
 		settingsService: settingsService,
