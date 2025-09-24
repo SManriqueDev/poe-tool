@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/application"
-	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
 )
 
 type Handler struct {
@@ -72,49 +71,14 @@ func (h *Handler) UpdateTradeLink(id int, url string, description string, select
 
 // MIGRADO: Usar servicio de aplicación
 func (h *Handler) StartLiveSearch() []TradeLink {
-	ctx := context.Background()
-
-	// Iniciar live search
-	err := h.liveSearchAppSvc.StartLiveSearch(ctx)
-	if err != nil {
-		// Log error pero continuar para devolver los links
-		// TODO: Mejorar el manejo de errores
-	}
-
-	// Obtener todos los trade links
-	domainLinks, err := h.liveSearchAppSvc.GetAllTradeLinks(ctx)
-	if err != nil {
-		// Fallback al servicio legacy en caso de error
-		return h.svc.StartLiveSearch()
-	}
-
-	// Convertir domain links a model links para compatibilidad
-	return h.convertDomainToModelLinks(domainLinks)
+	// TEMP: Usar servicio legacy hasta completar migración de LiveSearchApplicationService
+	return h.svc.StartLiveSearch()
 }
 
 // MIGRADO: Usar servicio de aplicación
 func (h *Handler) StopLiveSearch() {
-	ctx := context.Background()
-	err := h.liveSearchAppSvc.StopLiveSearch(ctx)
-	if err != nil {
-		// Fallback al servicio legacy en caso de error
-		h.svc.StopLiveSearch()
-	}
-}
-
-// convertDomainToModelLinks convierte domain.TradeLink a TradeLink para compatibilidad
-func (h *Handler) convertDomainToModelLinks(domainLinks []domain.TradeLink) []TradeLink {
-	var modelLinks []TradeLink
-	for _, dl := range domainLinks {
-		modelLinks = append(modelLinks, TradeLink{
-			ID:          dl.ID,
-			URL:         dl.URL,
-			Description: dl.Description,
-			Selected:    dl.Selected,
-			// Status se mantendrá como estaba antes
-		})
-	}
-	return modelLinks
+	// TEMP: Usar servicio legacy hasta completar migración
+	h.svc.StopLiveSearch()
 }
 
 func (h *Handler) SetContext(ctx context.Context) {
@@ -141,13 +105,15 @@ func (h *Handler) GetGoToHideout() (bool, error) {
 
 // MIGRADO: Usar servicio de aplicación
 func (h *Handler) IsLiveSearchRunning() bool {
-	return h.liveSearchAppSvc.IsLiveSearchRunning()
+	// TEMP: Usar servicio legacy hasta completar migración
+	return h.svc.IsLiveSearchRunning()
 }
 
 // MIGRADO: Usar servicio de aplicación con estado centralizado
 // MIGRADO: Usar servicio de aplicación
 func (h *Handler) GetAllLinkStatuses() map[int]string {
-	return h.liveSearchAppSvc.GetAllLinkStatuses()
+	// TEMP: Usar servicio legacy hasta completar migración
+	return h.svc.GetAllLinkStatuses()
 }
 
 // MIGRADO: Usar servicio de aplicación

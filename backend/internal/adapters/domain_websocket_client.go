@@ -364,9 +364,9 @@ func (c *DomainWebSocketClient) pingHandler(ctx context.Context, conn *websocket
 				c.logger.Error("websocket", "Failed to send ping", map[string]interface{}{
 					"url":   wsURL,
 					"error": err.Error(),
-				})˝
+				})
 				return
 			}
 		}
 	}
-}˝
+}

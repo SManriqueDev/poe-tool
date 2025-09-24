@@ -8,10 +8,13 @@ import (
 
 // DomainConfig centraliza la configuración para los componentes domain-pure
 type DomainConfig struct {
-	WebSocket WebSocketConfig `json:"websocket"`
-	EventBus  EventBusConfig  `json:"eventbus"`
-	APIClient APIClientConfig `json:"api_client"`
-	Logger    LoggerConfig    `json:"logger"`
+	WebSocket         WebSocketConfig         `json:"websocket"`
+	EventBus          EventBusConfig          `json:"eventbus"`
+	APIClient         APIClientConfig         `json:"api_client"`
+	Logger            LoggerConfig            `json:"logger"`
+	WindowManager     WindowManagerConfig     `json:"window_manager"`
+	HideoutAutomation HideoutAutomationConfig `json:"hideout_automation"`
+	SystemAPIClient   SystemAPIClientConfig   `json:"system_api_client"`
 }
 
 // WebSocketConfig configuración para el cliente WebSocket
@@ -53,6 +56,33 @@ type LoggerConfig struct {
 	EnableWarning bool   `json:"enable_warning"`
 }
 
+// WindowManagerConfig configuración para el window manager
+type WindowManagerConfig struct {
+	DefaultWidth  int  `json:"default_width"`
+	DefaultHeight int  `json:"default_height"`
+	EnableLogs    bool `json:"enable_logs"`
+}
+
+// HideoutAutomationConfig configuración para automatización de hideout
+type HideoutAutomationConfig struct {
+	MaxRetries   int           `json:"max_retries"`
+	RetryDelay   time.Duration `json:"retry_delay"`
+	ProcessDelay time.Duration `json:"process_delay"`
+	MaxQueueSize int           `json:"max_queue_size"`
+	EnableQueue  bool          `json:"enable_queue"`
+	AutoStart    bool          `json:"auto_start"`
+}
+
+// SystemAPIClientConfig configuración para el cliente de APIs del sistema
+type SystemAPIClientConfig struct {
+	Timeout        time.Duration `json:"timeout"`
+	MaxRetries     int           `json:"max_retries"`
+	RetryDelay     time.Duration `json:"retry_delay"`
+	RateLimitDelay time.Duration `json:"rate_limit_delay"`
+	UserAgent      string        `json:"user_agent"`
+	EnableLogging  bool          `json:"enable_logging"`
+}
+
 // DefaultDomainConfig retorna la configuración por defecto para componentes domain-pure
 func DefaultDomainConfig() *DomainConfig {
 	return &DomainConfig{
@@ -86,6 +116,27 @@ func DefaultDomainConfig() *DomainConfig {
 			EnableInfo:    true,
 			EnableError:   true,
 			EnableWarning: true,
+		},
+		WindowManager: WindowManagerConfig{
+			DefaultWidth:  800,
+			DefaultHeight: 600,
+			EnableLogs:    true,
+		},
+		HideoutAutomation: HideoutAutomationConfig{
+			MaxRetries:   3,
+			RetryDelay:   2 * time.Second,
+			ProcessDelay: 8 * time.Second, // Realistic trading time between visits
+			MaxQueueSize: 50,
+			EnableQueue:  true,
+			AutoStart:    true,
+		},
+		SystemAPIClient: SystemAPIClientConfig{
+			Timeout:        30 * time.Second,
+			MaxRetries:     3,
+			RetryDelay:     2 * time.Second,
+			RateLimitDelay: 500 * time.Millisecond, // Conservative for PoE API
+			UserAgent:      "PoeTool/1.0",
+			EnableLogging:  true,
 		},
 	}
 }
@@ -167,6 +218,69 @@ func (f *DomainComponentsFactory) CreateAPIClient() *DomainAPIClient {
 		"timeout":          f.config.APIClient.Timeout,
 		"max_retries":      f.config.APIClient.MaxRetries,
 		"rate_limit_delay": f.config.APIClient.RateLimitDelay,
+	})
+
+	return client
+}
+
+// CreateWindowManager crea un Window Manager configurado
+func (f *DomainComponentsFactory) CreateWindowManager() *DomainWindowManager {
+	manager := NewDomainWindowManager(f.logger)
+
+	// Aplicar configuración específica
+	manager.SetDefaultSize(f.config.WindowManager.DefaultWidth, f.config.WindowManager.DefaultHeight)
+
+	f.logger.Info("domain", "Window manager created with configuration", map[string]interface{}{
+		"default_width":  f.config.WindowManager.DefaultWidth,
+		"default_height": f.config.WindowManager.DefaultHeight,
+		"enable_logs":    f.config.WindowManager.EnableLogs,
+	})
+
+	return manager
+}
+
+// CreateHideoutAutomation crea un Hideout Automation configurado
+func (f *DomainComponentsFactory) CreateHideoutAutomation(systemAPIClient domain.SystemAPIClient, settingsRepo domain.LiveSearchRepository) *DomainHideoutAutomation {
+	automation := NewDomainHideoutAutomation(f.logger, systemAPIClient, settingsRepo)
+
+	// Aplicar configuración específica
+	automation.SetConfiguration(
+		f.config.HideoutAutomation.MaxRetries,
+		f.config.HideoutAutomation.RetryDelay,
+		f.config.HideoutAutomation.ProcessDelay,
+		f.config.HideoutAutomation.MaxQueueSize,
+	)
+
+	f.logger.Info("domain", "Hideout automation created with configuration", map[string]interface{}{
+		"max_retries":    f.config.HideoutAutomation.MaxRetries,
+		"retry_delay":    f.config.HideoutAutomation.RetryDelay,
+		"process_delay":  f.config.HideoutAutomation.ProcessDelay,
+		"max_queue_size": f.config.HideoutAutomation.MaxQueueSize,
+		"enable_queue":   f.config.HideoutAutomation.EnableQueue,
+		"auto_start":     f.config.HideoutAutomation.AutoStart,
+	})
+
+	return automation
+}
+
+// CreateSystemAPIClient crea un System API Client configurado
+func (f *DomainComponentsFactory) CreateSystemAPIClient() *DomainSystemAPIClient {
+	client := NewDomainSystemAPIClient(f.logger)
+
+	// Aplicar configuración específica
+	client.SetTimeout(f.config.SystemAPIClient.Timeout)
+	client.SetRateLimit(f.config.SystemAPIClient.RateLimitDelay)
+	client.maxRetries = f.config.SystemAPIClient.MaxRetries
+	client.retryDelay = f.config.SystemAPIClient.RetryDelay
+	client.userAgent = f.config.SystemAPIClient.UserAgent
+
+	f.logger.Info("domain", "System API client created with configuration", map[string]interface{}{
+		"timeout":          f.config.SystemAPIClient.Timeout,
+		"max_retries":      f.config.SystemAPIClient.MaxRetries,
+		"retry_delay":      f.config.SystemAPIClient.RetryDelay,
+		"rate_limit_delay": f.config.SystemAPIClient.RateLimitDelay,
+		"user_agent":       f.config.SystemAPIClient.UserAgent,
+		"enable_logging":   f.config.SystemAPIClient.EnableLogging,
 	})
 
 	return client

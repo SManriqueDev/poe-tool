@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
 	"github.com/SManriqueDev/poe-tool/backend/internal/logging"
 	"github.com/SManriqueDev/poe-tool/backend/internal/settings"
 	"github.com/corpix/uarand"
@@ -23,7 +24,12 @@ type Service struct {
 	// Dependency managers
 	tradeLinkMgr *TradeLinkManager
 
-	// Legacy fields (will be refactored in future phases)
+	// Fase 4: Domain components
+	windowManager     domain.WindowManager
+	hideoutAutomation domain.HideoutAutomation
+	systemAPIClient   domain.SystemAPIClient
+
+	// Legacy fields (serán eliminados en Fase 5)
 	links             []TradeLink
 	mu                sync.Mutex
 	settingsSvc       *settings.Service
@@ -266,6 +272,11 @@ func NewService(settingsSvc *settings.Service, loggingSvc *logging.Service) *Ser
 		// Initialize dependency managers
 		tradeLinkMgr: NewTradeLinkManager(WithTradeLinkRepository(repo)),
 
+		// Phase 4 - Domain components will be injected via SetDomainComponents
+		windowManager:     nil,
+		hideoutAutomation: nil,
+		systemAPIClient:   nil,
+
 		// Legacy fields (will be refactored in future phases)
 		links:          make([]TradeLink, 0),
 		settingsSvc:    settingsSvc,
@@ -285,6 +296,13 @@ func NewService(settingsSvc *settings.Service, loggingSvc *logging.Service) *Ser
 	go s.processHideoutQueue()
 
 	return s
+}
+
+// SetDomainComponents injects Phase 4 domain components
+func (s *Service) SetDomainComponents(windowManager domain.WindowManager, hideoutAutomation domain.HideoutAutomation, systemAPIClient domain.SystemAPIClient) {
+	s.windowManager = windowManager
+	s.hideoutAutomation = hideoutAutomation
+	s.systemAPIClient = systemAPIClient
 }
 
 // GetRepository retorna el repositorio para permitir crear adaptadores
@@ -632,9 +650,12 @@ func (s *Service) ClearLinkStatuses() {
 
 // OpenLogsWindow abre una nueva ventana mostrando los logs de LiveSearch
 func (s *Service) OpenLogsWindow() error {
-	// Esta función necesita acceso a la aplicación global
-	// La implementaremos desde el handler que puede importar main
-	return fmt.Errorf("use handler method instead")
+	// Use Phase 4 domain window manager if available
+	if s.windowManager != nil {
+		return s.windowManager.OpenLogsWindow(s.ctx)
+	}
+	// Legacy fallback
+	return fmt.Errorf("window manager not available - use handler method instead")
 }
 
 // HideoutQueueItem represents an item waiting to go to hideout
@@ -653,6 +674,12 @@ func (s *Service) GoToHideout(hideoutToken string) error {
 		return fmt.Errorf("POESESSID not configured")
 	}
 
+	// Use Phase 4 domain system API client if available
+	if s.systemAPIClient != nil {
+		return s.systemAPIClient.SendHideoutRequest(s.ctx, hideoutToken, config.PoeSessid)
+	}
+
+	// Legacy fallback implementation
 	// Prepare request body
 	requestBody := map[string]interface{}{
 		"token":    hideoutToken,
@@ -833,6 +860,12 @@ func (s *Service) processHideoutQueue() {
 	}
 } // QueueHideoutVisit adds a hideout visit to the queue if go_to_hideout is enabled
 func (s *Service) QueueHideoutVisit(hideoutToken, itemID string) error {
+	// Use Phase 4 domain hideout automation if available
+	if s.hideoutAutomation != nil {
+		return s.hideoutAutomation.QueueHideoutVisit(s.ctx, hideoutToken, itemID)
+	}
+
+	// Legacy implementation fallback
 	// Check if go_to_hideout is enabled
 	enabled, err := s.GetGoToHideout()
 	if err != nil {
@@ -908,11 +941,35 @@ func (s *Service) processItemForHideout(item ItemResult) {
 
 // GetHideoutQueueSize returns the current number of items in the hideout queue
 func (s *Service) GetHideoutQueueSize() int {
+	// Use Phase 4 domain hideout automation if available
+	if s.hideoutAutomation != nil {
+		size, err := s.hideoutAutomation.GetQueueSize(s.ctx)
+		if err != nil {
+			s.loggingSvc.Warning(logging.LogModuleLiveSearch, "Failed to get hideout queue size", map[string]interface{}{
+				"error": err.Error(),
+			})
+			return 0
+		}
+		return size
+	}
+	// Legacy fallback
 	return len(s.hideoutQueue)
 }
 
 // IsHideoutProcessing returns whether a hideout request is currently being processed
 func (s *Service) IsHideoutProcessing() bool {
+	// Use Phase 4 domain hideout automation if available
+	if s.hideoutAutomation != nil {
+		processing, err := s.hideoutAutomation.IsProcessing(s.ctx)
+		if err != nil {
+			s.loggingSvc.Warning(logging.LogModuleLiveSearch, "Failed to check hideout processing status", map[string]interface{}{
+				"error": err.Error(),
+			})
+			return false
+		}
+		return processing
+	}
+	// Legacy fallback
 	s.hideoutMu.Lock()
 	defer s.hideoutMu.Unlock()
 	return s.hideoutProcessing
