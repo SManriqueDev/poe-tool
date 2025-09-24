@@ -145,15 +145,9 @@ func (h *Handler) IsLiveSearchRunning() bool {
 }
 
 // MIGRADO: Usar servicio de aplicación con estado centralizado
+// MIGRADO: Usar servicio de aplicación
 func (h *Handler) GetAllLinkStatuses() map[int]string {
-	statuses := h.liveSearchAppSvc.GetAllLinkStatuses()
-
-	// Si no hay estados en el nuevo servicio, usar el legacy como fallback
-	if len(statuses) == 0 {
-		return h.svc.GetAllLinkStatuses()
-	}
-
-	return statuses
+	return h.liveSearchAppSvc.GetAllLinkStatuses()
 }
 
 // MIGRADO: Usar servicio de aplicación

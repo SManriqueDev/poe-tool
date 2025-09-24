@@ -21,12 +21,12 @@ func NewRepository() *Repository {
 }
 
 func (r *Repository) AddTradeLink(url, description string) error {
-	_, err := r.db.Exec("INSERT INTO trade_links (url, description, selected) VALUES (?, ?, ?)", url, description, boolToInt(false))
+	_, err := r.db.Exec("INSERT INTO trade_links (url, description, selected, created_at) VALUES (?, ?, ?, datetime('now'))", url, description, boolToInt(false))
 	return err
 }
 
 func (r *Repository) GetTradeLinks() ([]TradeLink, error) {
-	rows, err := r.db.Query("SELECT id, url, description, selected FROM trade_links")
+	rows, err := r.db.Query("SELECT id, url, description, selected, COALESCE(created_at, datetime('now')) FROM trade_links")
 	if err != nil {
 		return nil, err
 	}
@@ -37,8 +37,9 @@ func (r *Repository) GetTradeLinks() ([]TradeLink, error) {
 		var id int
 		var url, description string
 		var selected bool
+		var createdAt string
 
-		if err := rows.Scan(&id, &url, &description, &selected); err != nil {
+		if err := rows.Scan(&id, &url, &description, &selected, &createdAt); err != nil {
 			return nil, err
 		}
 
@@ -49,6 +50,7 @@ func (r *Repository) GetTradeLinks() ([]TradeLink, error) {
 			WithSelected(selected),
 			WithStatus("idle"),
 		)
+		// Agregar createdAt al TradeLink (puede requerir modificar el modelo legacy)
 		links = append(links, *tl)
 	}
 	return links, nil

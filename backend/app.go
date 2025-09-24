@@ -30,19 +30,21 @@ func NewApp() *App {
 	// Configure event emitter for real-time log updates
 	lsService.SetupEventEmitter(loggingService)
 
-	// Crear adaptadores para la nueva arquitectura
-	repoAdapter := adapters.NewRepositoryAdapter(lsService.GetRepository())
-	liveSearchRepoAdapter := adapters.NewLiveSearchRepositoryAdapter(lsService.GetRepository())
+	// FASE 2: Usar repositories domain puros en lugar de adapters legacy
+	domainTradeLinkRepo := adapters.NewDomainTradeLinkRepository()
+	domainLiveSearchRepo := adapters.NewDomainLiveSearchRepository()
+	
+	// Mantener adapters para logging, websocket y eventbus
 	loggerAdapter := adapters.NewLoggerAdapter(loggingService)
 	wsAdapter := adapters.NewWebSocketClientAdapter(lsService)
 	eventBusAdapter := adapters.NewEventBusAdapter(lsService.GetEventBus())
 
-	// Crear servicios de aplicación
-	tradeLinkAppSvc := lsapplication.NewTradeLinkApplicationService(repoAdapter, loggerAdapter)
-	hideoutAppSvc := lsapplication.NewHideoutApplicationService(liveSearchRepoAdapter, loggerAdapter)
+	// Crear servicios de aplicación con repositories domain puros
+	tradeLinkAppSvc := lsapplication.NewTradeLinkApplicationService(domainTradeLinkRepo, loggerAdapter)
+	hideoutAppSvc := lsapplication.NewHideoutApplicationService(domainLiveSearchRepo, loggerAdapter)
 	liveSearchAppSvc := lsapplication.NewLiveSearchApplicationService(
-		repoAdapter,
-		liveSearchRepoAdapter,
+		domainTradeLinkRepo,
+		domainLiveSearchRepo,
 		wsAdapter,
 		eventBusAdapter,
 		loggerAdapter,

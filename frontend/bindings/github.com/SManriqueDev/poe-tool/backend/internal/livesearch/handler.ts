@@ -25,6 +25,7 @@ export function DeleteTradeLink(id: number): $CancellablePromise<void> {
 
 /**
  * MIGRADO: Usar servicio de aplicación con estado centralizado
+ * MIGRADO: Usar servicio de aplicación
  */
 export function GetAllLinkStatuses(): $CancellablePromise<{ [_: `${number}`]: string }> {
     return $Call.ByID(1096111801).then(($result: any) => {

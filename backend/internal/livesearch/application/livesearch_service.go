@@ -254,6 +254,18 @@ func (s *LiveSearchApplicationService) GetAllLinkStatuses() map[int]string {
 				s.linkStatuses[id] = status
 			}
 		}
+	} else {
+		// Si no está corriendo, inicializar estados de trade links existentes
+		ctx := context.Background()
+		links, err := s.tradeLinkRepo.GetAll(ctx)
+		if err == nil {
+			for _, link := range links {
+				// Solo establecer estado "idle" si no existe ya un estado
+				if _, exists := s.linkStatuses[link.ID]; !exists {
+					s.linkStatuses[link.ID] = "idle"
+				}
+			}
+		}
 	}
 
 	// Crear una copia del mapa para evitar race conditions

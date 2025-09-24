@@ -18,6 +18,19 @@ func NewRepositoryAdapter(repo *livesearch.Repository) *RepositoryAdapter {
 	return &RepositoryAdapter{repo: repo}
 }
 
+// convertLegacyToDomain convierte un TradeLink legacy al formato domain
+func (a *RepositoryAdapter) convertLegacyToDomain(tl *livesearch.TradeLink) domain.TradeLink {
+	// Por ahora usamos time.Now() ya que el modelo legacy no tiene CreatedAt
+	// En el futuro podríamos obtener este valor de la base de datos directamente
+	return domain.TradeLink{
+		ID:          tl.ID,
+		URL:         tl.URL,
+		Description: tl.Description,
+		Selected:    tl.Selected,
+		CreatedAt:   time.Now(), // Temporal hasta que migremos el modelo legacy
+	}
+}
+
 // GetActiveTradeLinks obtiene los trade links activos
 func (a *RepositoryAdapter) GetActiveTradeLinks(ctx context.Context) ([]domain.TradeLink, error) {
 	// Usar el método existente
@@ -30,13 +43,7 @@ func (a *RepositoryAdapter) GetActiveTradeLinks(ctx context.Context) ([]domain.T
 	var tradeLinks []domain.TradeLink
 	for _, tl := range oldTradeLinks {
 		if tl.Selected { // Solo los seleccionados
-			tradeLinks = append(tradeLinks, domain.TradeLink{
-				ID:          tl.ID,
-				URL:         tl.URL,
-				Description: tl.Description,
-				Selected:    tl.Selected,
-				CreatedAt:   time.Now(), // El modelo actual no tiene CreatedAt
-			})
+			tradeLinks = append(tradeLinks, a.convertLegacyToDomain(&tl))
 		}
 	}
 
@@ -52,13 +59,8 @@ func (a *RepositoryAdapter) GetByID(ctx context.Context, id int) (*domain.TradeL
 
 	for _, tl := range tradeLinks {
 		if tl.ID == id {
-			return &domain.TradeLink{
-				ID:          tl.ID,
-				URL:         tl.URL,
-				Description: tl.Description,
-				Selected:    tl.Selected,
-				CreatedAt:   time.Now(), // El modelo actual no tiene CreatedAt
-			}, nil
+			converted := a.convertLegacyToDomain(&tl)
+			return &converted, nil
 		}
 	}
 
@@ -90,13 +92,7 @@ func (a *RepositoryAdapter) List(ctx context.Context) ([]domain.TradeLink, error
 	// Convertir al formato del dominio
 	var tradeLinks []domain.TradeLink
 	for _, tl := range oldTradeLinks {
-		tradeLinks = append(tradeLinks, domain.TradeLink{
-			ID:          tl.ID,
-			URL:         tl.URL,
-			Description: tl.Description,
-			Selected:    tl.Selected,
-			CreatedAt:   time.Now(), // El modelo actual no tiene CreatedAt
-		})
+		tradeLinks = append(tradeLinks, a.convertLegacyToDomain(&tl))
 	}
 
 	return tradeLinks, nil
