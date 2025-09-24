@@ -34,15 +34,24 @@ func NewApp() *App {
 	repoAdapter := adapters.NewRepositoryAdapter(lsService.GetRepository())
 	liveSearchRepoAdapter := adapters.NewLiveSearchRepositoryAdapter(lsService.GetRepository())
 	loggerAdapter := adapters.NewLoggerAdapter(loggingService)
+	wsAdapter := adapters.NewWebSocketClientAdapter(lsService)
+	eventBusAdapter := adapters.NewEventBusAdapter(lsService.GetEventBus())
 
 	// Crear servicios de aplicación
 	tradeLinkAppSvc := lsapplication.NewTradeLinkApplicationService(repoAdapter, loggerAdapter)
 	hideoutAppSvc := lsapplication.NewHideoutApplicationService(liveSearchRepoAdapter, loggerAdapter)
+	liveSearchAppSvc := lsapplication.NewLiveSearchApplicationService(
+		repoAdapter,
+		liveSearchRepoAdapter,
+		wsAdapter,
+		eventBusAdapter,
+		loggerAdapter,
+	)
 
 	return &App{
 		SettingsHandler:   settings.NewHandler(settingsService),
 		LoggingHandler:    logging.NewHandler(loggingService),
-		LiveSearchHandler: livesearch.NewHandler(lsService, tradeLinkAppSvc, hideoutAppSvc),
+		LiveSearchHandler: livesearch.NewHandler(lsService, tradeLinkAppSvc, hideoutAppSvc, liveSearchAppSvc),
 
 		// Store service references for context management
 		settingsService: settingsService,

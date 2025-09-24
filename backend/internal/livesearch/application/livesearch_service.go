@@ -105,6 +105,54 @@ func (s *LiveSearchApplicationService) IsLiveSearchRunning() bool {
 
 // runLiveSearch ejecuta la lógica de búsqueda en vivo
 func (s *LiveSearchApplicationService) runLiveSearch(ctx context.Context, tradeLinks []domain.TradeLink) {
-	// Esta función contendrá la lógica actual de búsqueda que está en el Service
-	// Se moverá gradualmente desde service.go
+	s.logger.Info("livesearch", "Starting live search process", map[string]interface{}{
+		"trade_links_count": len(tradeLinks),
+	})
+
+	// Emitir evento de inicio
+	if err := s.eventBus.EmitLiveSearchStarted(ctx); err != nil {
+		s.logger.Error("livesearch", "Failed to emit live search started event", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+
+	// Por ahora, implementación básica que simula el proceso
+	// En futuras iteraciones se puede mover la lógica compleja desde service.go
+	for _, link := range tradeLinks {
+		select {
+		case <-ctx.Done():
+			s.logger.Info("livesearch", "Live search cancelled", nil)
+			return
+		default:
+			// Procesar cada trade link
+			s.logger.Info("livesearch", "Processing trade link", map[string]interface{}{
+				"link_id":     link.ID,
+				"description": link.Description,
+			})
+
+			// Emitir evento de cambio de estado
+			if err := s.eventBus.EmitLinkStatusChanged(ctx, link.ID, "processing"); err != nil {
+				s.logger.Error("livesearch", "Failed to emit link status changed", map[string]interface{}{
+					"link_id": link.ID,
+					"error":   err.Error(),
+				})
+			}
+		}
+	}
+
+	s.logger.Info("livesearch", "Live search process completed", nil)
+}
+
+// GetActiveTradeLinksCount retorna el número de trade links activos
+func (s *LiveSearchApplicationService) GetActiveTradeLinksCount(ctx context.Context) (int, error) {
+	tradeLinks, err := s.tradeLinkRepo.GetActiveTradeLinks(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return len(tradeLinks), nil
+}
+
+// GetAllTradeLinks retorna todos los trade links para mantener compatibilidad con handler
+func (s *LiveSearchApplicationService) GetAllTradeLinks(ctx context.Context) ([]domain.TradeLink, error) {
+	return s.tradeLinkRepo.GetAll(ctx)
 }

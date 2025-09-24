@@ -23,6 +23,7 @@ type TradeLinkRepository interface {
 	Update(ctx context.Context, tradeLink *TradeLink) error
 	Delete(ctx context.Context, id int) error
 	List(ctx context.Context) ([]TradeLink, error)
+	GetAll(ctx context.Context) ([]TradeLink, error) // Alias para List para compatibilidad
 }
 
 // LiveSearchRepository define el contrato para configuración de live search

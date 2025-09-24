@@ -101,3 +101,8 @@ func (a *RepositoryAdapter) List(ctx context.Context) ([]domain.TradeLink, error
 
 	return tradeLinks, nil
 }
+
+// GetAll es un alias para List para compatibilidad
+func (a *RepositoryAdapter) GetAll(ctx context.Context) ([]domain.TradeLink, error) {
+	return a.List(ctx)
+}

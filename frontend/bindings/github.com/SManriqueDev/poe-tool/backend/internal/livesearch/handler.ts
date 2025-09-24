@@ -23,6 +23,9 @@ export function DeleteTradeLink(id: number): $CancellablePromise<void> {
     return $Call.ByID(2544351275, id);
 }
 
+/**
+ * TODO: Migrar a servicio de aplicación (requiere estado de links en tiempo real)
+ */
 export function GetAllLinkStatuses(): $CancellablePromise<{ [_: `${number}`]: string }> {
     return $Call.ByID(1096111801).then(($result: any) => {
         return $$createType0($result);
@@ -36,14 +39,23 @@ export function GetGoToHideout(): $CancellablePromise<boolean> {
     return $Call.ByID(3389697673);
 }
 
+/**
+ * MIGRADO: Usar servicio de aplicación
+ */
 export function GetHideoutQueueSize(): $CancellablePromise<number> {
     return $Call.ByID(1736301070);
 }
 
+/**
+ * MIGRADO: Usar servicio de aplicación
+ */
 export function IsHideoutProcessing(): $CancellablePromise<boolean> {
     return $Call.ByID(2435293671);
 }
 
+/**
+ * MIGRADO: Usar servicio de aplicación
+ */
 export function IsLiveSearchRunning(): $CancellablePromise<boolean> {
     return $Call.ByID(940322137);
 }
@@ -72,12 +84,18 @@ export function SetGoToHideout(enabled: boolean): $CancellablePromise<void> {
     return $Call.ByID(3798349037, enabled);
 }
 
+/**
+ * MIGRADO: Usar servicio de aplicación
+ */
 export function StartLiveSearch(): $CancellablePromise<$models.TradeLink[]> {
     return $Call.ByID(3906018782).then(($result: any) => {
         return $$createType1($result);
     });
 }
 
+/**
+ * MIGRADO: Usar servicio de aplicación
+ */
 export function StopLiveSearch(): $CancellablePromise<void> {
     return $Call.ByID(3475946234);
 }

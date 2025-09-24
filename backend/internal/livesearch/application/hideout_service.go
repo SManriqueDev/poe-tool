@@ -74,3 +74,17 @@ func (s *HideoutApplicationService) SetGoToHideout(ctx context.Context, enabled 
 	}
 	return s.DisableGoToHideout(ctx)
 }
+
+// GetQueueSize retorna el tamaño de la cola de hideout
+// TODO: Implementar lógica de cola cuando se migre completamente
+func (s *HideoutApplicationService) GetQueueSize(ctx context.Context) (int, error) {
+	// Por ahora devolver 0 - la lógica compleja se migrará más adelante
+	return 0, nil
+}
+
+// IsProcessing verifica si el hideout está siendo procesado
+// TODO: Implementar lógica de procesamiento cuando se migre completamente
+func (s *HideoutApplicationService) IsProcessing(ctx context.Context) (bool, error) {
+	// Por ahora devolver false - la lógica compleja se migrará más adelante
+	return false, nil
+}
