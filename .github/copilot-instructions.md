@@ -7,11 +7,13 @@
 
 ### Backend Structure (Go)
 - **Wails v3 Framework**: Desktop app with embedded frontend (`main.go` embeds `frontend/dist`)
-- **Layered Architecture**: Handler → Service → Repository pattern with dependency injection
+- **Clean Architecture**: Domain → Application → Infrastructure layers with dependency injection
 - **Modules**: `livesearch`, `settings`, and `logging` in `backend/internal/`
+- **Application Services**: Business logic in `backend/internal/livesearch/application/` (e.g., `TradeLinkApplicationService`, `LiveSearchApplicationService`)
+- **Domain Layer**: Interfaces and models in `backend/internal/livesearch/domain/` defining contracts
+- **Adapters**: Infrastructure implementations in `backend/internal/adapters/` bridging domain interfaces
 - **Database**: SQLite via `backend/db/database.go` with Goose migrations in `migrations/`
 - **Service Dependencies**: Cross-service injection (e.g., `livesearch` depends on `settings` and `logging`)
-- **Context Flow**: App startup creates services with dependencies, then sets contexts via `SetupContexts()`
 
 ### Frontend Structure (React/TypeScript)
 - **Build Tool**: Vite with TypeScript
@@ -31,14 +33,33 @@ func NewApp() *App {
     loggingService := logging.NewService(settingsService)      // depends on settings
     lsService := livesearch.NewService(settingsService, loggingService)  // depends on both
 
-    // Configure cross-service communication
-    lsService.SetupEventEmitter(loggingService)
+    // Domain factory creates infrastructure components
+    domainFactory := adapters.NewDomainComponentsFactory(domainConfig, loggerAdapter)
+    domainWebSocketClient := domainFactory.CreateWebSocketClient()
+    domainEventBus := domainFactory.CreateEventBus()
+
+    // Application services use domain interfaces
+    tradeLinkAppSvc := lsapplication.NewTradeLinkApplicationService(domainTradeLinkRepo, loggerAdapter)
+    liveSearchAppSvc := lsapplication.NewLiveSearchApplicationService(
+        domainTradeLinkRepo, domainLiveSearchRepo, domainWebSocketClient, domainEventBus, loggerAdapter)
 
     return &App{
-        SettingsHandler:   settings.NewHandler(settingsService),
-        LoggingHandler:    logging.NewHandler(loggingService),
-        LiveSearchHandler: livesearch.NewHandler(lsService),
+        LiveSearchHandler: livesearch.NewHandler(lsService, tradeLinkAppSvc, hideoutAppSvc, liveSearchAppSvc),
     }
+}
+```
+
+#### Application Service Pattern
+```go
+// Application services implement use cases using domain interfaces
+type TradeLinkApplicationService struct {
+    repo   domain.TradeLinkRepository
+    logger domain.Logger
+}
+
+func (s *TradeLinkApplicationService) AddTradeLink(ctx context.Context, url, description string) error {
+    tradeLink := &domain.TradeLink{URL: url, Description: description, Selected: true}
+    return s.repo.Create(ctx, tradeLink)
 }
 ```
 
@@ -94,10 +115,13 @@ wails3 task windows:build # Cross-compile Windows
 ### Adding New Features
 
 #### Backend Changes
-1. Add methods to Service (`backend/internal/[module]/service.go`)
-2. Expose via Handler (`backend/internal/[module]/handler.go`)
-3. Bind in `main.go` if new module, or existing handler auto-updates
-4. Database changes require migration in `migrations/`
+1. Add domain interfaces in `backend/internal/livesearch/domain/interfaces.go`
+2. Implement domain logic in `backend/internal/livesearch/domain/usecases.go`
+3. Create application service in `backend/internal/livesearch/application/`
+4. Add adapter implementation in `backend/internal/adapters/`
+5. Expose via Handler (`backend/internal/[module]/handler.go`)
+6. Bind in `main.go` if new module, or existing handler auto-updates
+7. Database changes require migration in `migrations/`
 
 #### Frontend Changes
 1. Run `wails3 dev` to regenerate bindings after backend changes
@@ -109,8 +133,17 @@ wails3 task windows:build # Cross-compile Windows
 
 ### File Organization
 - Backend modules: `backend/internal/[feature]/` with handler, service, repository, model
+- Application layer: `backend/internal/livesearch/application/` for use case implementations
+- Domain layer: `backend/internal/livesearch/domain/` for interfaces and core business logic
+- Adapters: `backend/internal/adapters/` for infrastructure implementations
 - Frontend features: Organize by domain in `src/pages/` and `src/[feature]/`
 - Shared UI: `src/components/ui/` (Shadcn) and `src/components/` (custom)
+
+### Clean Architecture Migration Status
+- **Phase 1-4 Complete**: Domain interfaces, application services, and adapter implementations
+- **Phase 5**: Integrating domain components into application services
+- **Current State**: Hybrid architecture with legacy service layer + new clean architecture components
+- **Migration Pattern**: Domain components created via factory, injected into application services
 
 ### Styling Approach
 - **Tailwind CSS 4**: Use utility classes with new v4 syntax
@@ -153,6 +186,7 @@ wails3 task windows:build # Cross-compile Windows
 - Database file `poe_tool.db` in project root for inspection
 
 ## Testing Strategy
-- No test framework currently configured
+- Application service tests in `backend/internal/livesearch/application/`
+- No integrated test framework currently configured
 - Manual testing via `make dev` and frontend interaction
 - Database testing can use temporary SQLite files
