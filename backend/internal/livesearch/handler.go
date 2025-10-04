@@ -13,18 +13,20 @@ type Handler struct {
 	hideoutAppSvc    *application.HideoutApplicationService
 	liveSearchAppSvc *application.LiveSearchApplicationService
 
-	// Servicio legacy (para compatibilidad durante migración)
-	svc *Service
+	logger        domain.Logger
+	windowManager domain.WindowManager
 }
 
 // NewHandler crea un handler con ambos: servicios nuevos y legacy
 // Los servicios de aplicación se inyectan desde app.go para evitar dependencias circulares
-func NewHandler(svc *Service, tradeLinkAppSvc *application.TradeLinkApplicationService, hideoutAppSvc *application.HideoutApplicationService, liveSearchAppSvc *application.LiveSearchApplicationService) *Handler {
+func NewHandler(tradeLinkAppSvc *application.TradeLinkApplicationService, hideoutAppSvc *application.HideoutApplicationService, liveSearchAppSvc *application.LiveSearchApplicationService, logger domain.Logger,
+	windowManager domain.WindowManager) *Handler {
 	return &Handler{
 		tradeLinkAppSvc:  tradeLinkAppSvc,
 		hideoutAppSvc:    hideoutAppSvc,
 		liveSearchAppSvc: liveSearchAppSvc,
-		svc:              svc, // Para funcionalidades no migradas aún
+		logger:           logger,
+		windowManager:    windowManager,
 	}
 }
 
@@ -60,10 +62,6 @@ func (h *Handler) ListTradeLinks() []TradeLink {
 	return tradeLinks
 }
 
-//func (h *Handler) UpdateTradeLinks(links []TradeLink) {
-//	h.svc.UpdateTradeLinks(links)
-//}
-
 // MIGRADO: Usar servicio de aplicación
 func (h *Handler) UpdateTradeLink(id int, url string, description string, selected bool) error {
 	ctx := context.Background()
@@ -77,17 +75,17 @@ func (h *Handler) StartLiveSearch() []TradeLink {
 	// Usar LiveSearchApplicationService nativo (ya no legacy)
 	err := h.liveSearchAppSvc.StartLiveSearch(ctx)
 	if err != nil {
-		h.logError("Failed to start live search", err)
-		// Fallback al servicio legacy solo en caso de error crítico
-		return h.svc.StartLiveSearch()
+		h.logger.Error("livesearch", "Failed to start live search", map[string]interface{}{
+			"error": err.Error(),
+		})
 	}
 
 	// Obtener todos los trade links desde el application service
 	domainLinks, err := h.liveSearchAppSvc.GetAllTradeLinks(ctx)
 	if err != nil {
-		h.logError("Failed to get trade links", err)
-		// Fallback al servicio legacy
-		return h.svc.StartLiveSearch()
+		h.logger.Error("livesearch", "Failed to get trade links", map[string]interface{}{
+			"error": err.Error(),
+		})
 	}
 
 	// Convertir domain links a model links para compatibilidad con frontend
@@ -95,13 +93,13 @@ func (h *Handler) StartLiveSearch() []TradeLink {
 }
 
 // Helper para logging de errores
-func (h *Handler) logError(message string, err error) {
-	if h.svc != nil && h.svc.loggingSvc != nil {
-		h.svc.loggingSvc.Error("livesearch", message, map[string]interface{}{
-			"error": err.Error(),
-		})
-	}
-}
+// func (h *Handler) logError(message string, err error) {
+// 	if h.svc != nil && h.svc.loggingSvc != nil {
+// 		h.svc.loggingSvc.Error("livesearch", message, map[string]interface{}{
+// 			"error": err.Error(),
+// 		})
+// 	}
+// }
 
 // Helper para conversión de domain a model
 func (h *Handler) convertDomainToModelLinks(domainLinks []domain.TradeLink) []TradeLink {
@@ -122,14 +120,10 @@ func (h *Handler) StopLiveSearch() {
 	ctx := context.Background()
 	err := h.liveSearchAppSvc.StopLiveSearch(ctx)
 	if err != nil {
-		h.logError("Failed to stop live search", err)
-		// Fallback al servicio legacy en caso de error
-		h.svc.StopLiveSearch()
+		h.logger.Error("livesearch", "Failed to stop live search", map[string]interface{}{
+			"error": err.Error(),
+		})
 	}
-}
-
-func (h *Handler) SetContext(ctx context.Context) {
-	h.svc.SetContext(ctx)
 }
 
 // MIGRADO: Usar servicio de aplicación
@@ -167,8 +161,10 @@ func (h *Handler) GetHideoutQueueSize() int {
 	ctx := context.Background()
 	size, err := h.hideoutAppSvc.GetQueueSize(ctx)
 	if err != nil {
-		// Fallback al servicio legacy
-		return h.svc.GetHideoutQueueSize()
+		h.logger.Error("livesearch", "Failed to get hideout queue size", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return 0
 	}
 	return size
 }
@@ -178,25 +174,15 @@ func (h *Handler) IsHideoutProcessing() bool {
 	ctx := context.Background()
 	processing, err := h.hideoutAppSvc.IsProcessing(ctx)
 	if err != nil {
-		// Fallback al servicio legacy
-		return h.svc.IsHideoutProcessing()
+		h.logger.Error("livesearch", "Failed to check if hideout is processing", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return false
 	}
 	return processing
 }
 
 func (h *Handler) OpenLogsWindow() error {
-	return OpenLogsWindow()
-}
-
-func (h *Handler) TestLogEvent() error {
-	// Crear un log de prueba para testing
-	return h.svc.loggingSvc.LogItemFound(
-		"test-search-id",
-		"test-item-id",
-		"Test Item for Event Testing",
-		"Test League",
-		"http://test-url",
-		nil,
-		"Test item details for event debugging",
-	)
+	ctx := context.Background()
+	return h.windowManager.OpenLogsWindow(ctx)
 }

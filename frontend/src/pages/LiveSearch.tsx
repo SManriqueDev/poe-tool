@@ -283,16 +283,10 @@ export default function LiveSearch() {
 	const handleStart = async () => {
 		setIsLiveSearchRunning(true);
 		toast("Starting live search for selected links...");
-		const updatedLinks = await startLiveSearch();
+		await startLiveSearch();
 
-		// NO sobrescribir los links actuales - los status updates vendrán por eventos
-		// Solo verificar si hay errores de autenticación
-		if (updatedLinks.some((link) => link.status === "auth_error")) {
-			toast.error(
-				"Your POESESSID is invalid or expired. Please update it in settings.",
-			);
-			setIsLiveSearchRunning(false);
-		}
+		// Los status updates vendrán por eventos
+		// Verificar errores de autenticación se hará a través de eventos de status
 	};
 
 	const handleStop = async () => {

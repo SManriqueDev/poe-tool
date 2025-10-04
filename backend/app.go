@@ -52,7 +52,7 @@ func NewApp() *App {
 	domainHideoutAutomation := domainFactory.CreateHideoutAutomation(domainSystemAPIClient, domainLiveSearchRepo)
 
 	tradeLinkAppSvc := lsapplication.NewTradeLinkApplicationService(domainTradeLinkRepo, loggerAdapter)
-	hideoutAppSvc := lsapplication.NewHideoutApplicationService(domainLiveSearchRepo, loggerAdapter)
+	hideoutAppSvc := lsapplication.NewHideoutApplicationService(domainLiveSearchRepo, domainHideoutAutomation, loggerAdapter)
 
 	// FASE 5: Crear LiveSearchApplicationService completo
 	liveSearchAppSvc := lsapplication.NewLiveSearchApplicationService(
@@ -66,7 +66,7 @@ func NewApp() *App {
 	return &App{
 		SettingsHandler:   settings.NewHandler(settingsService),
 		LoggingHandler:    logging.NewHandler(loggingService),
-		LiveSearchHandler: livesearch.NewHandler(lsService, tradeLinkAppSvc, hideoutAppSvc, liveSearchAppSvc),
+		LiveSearchHandler: livesearch.NewHandler(tradeLinkAppSvc, hideoutAppSvc, liveSearchAppSvc, loggerAdapter, domainWindowManager),
 
 		settingsService: settingsService,
 		loggingService:  loggingService,

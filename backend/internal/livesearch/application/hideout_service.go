@@ -8,15 +8,21 @@ import (
 
 // HideoutApplicationService implementa los casos de uso para gestión de hideout
 type HideoutApplicationService struct {
-	repo   domain.LiveSearchRepository
-	logger domain.Logger
+	repo              domain.LiveSearchRepository
+	hideoutAutomation domain.HideoutAutomation // Nuevo: delegar lógica de cola
+	logger            domain.Logger
 }
 
 // NewHideoutApplicationService crea una nueva instancia del servicio
-func NewHideoutApplicationService(repo domain.LiveSearchRepository, logger domain.Logger) *HideoutApplicationService {
+func NewHideoutApplicationService(
+	repo domain.LiveSearchRepository,
+	hideoutAutomation domain.HideoutAutomation, // Nuevo parámetro
+	logger domain.Logger,
+) *HideoutApplicationService {
 	return &HideoutApplicationService{
-		repo:   repo,
-		logger: logger,
+		repo:              repo,
+		hideoutAutomation: hideoutAutomation, // Nuevo
+		logger:            logger,
 	}
 }
 
@@ -75,16 +81,12 @@ func (s *HideoutApplicationService) SetGoToHideout(ctx context.Context, enabled 
 	return s.DisableGoToHideout(ctx)
 }
 
-// GetQueueSize retorna el tamaño de la cola de hideout
-// TODO: Implementar lógica de cola cuando se migre completamente
+// GetQueueSize retorna el tamaño de la cola de hideout usando domain.HideoutAutomation
 func (s *HideoutApplicationService) GetQueueSize(ctx context.Context) (int, error) {
-	// Por ahora devolver 0 - la lógica compleja se migrará más adelante
-	return 0, nil
+	return s.hideoutAutomation.GetQueueSize(ctx)
 }
 
-// IsProcessing verifica si el hideout está siendo procesado
-// TODO: Implementar lógica de procesamiento cuando se migre completamente
+// IsProcessing verifica si el hideout está siendo procesado usando domain.HideoutAutomation
 func (s *HideoutApplicationService) IsProcessing(ctx context.Context) (bool, error) {
-	// Por ahora devolver false - la lógica compleja se migrará más adelante
-	return false, nil
+	return s.hideoutAutomation.IsProcessing(ctx)
 }

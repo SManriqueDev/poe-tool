@@ -73,10 +73,6 @@ export function OpenLogsWindow(): $CancellablePromise<void> {
     return $Call.ByID(2916030603);
 }
 
-export function SetContext(): $CancellablePromise<void> {
-    return $Call.ByID(472825787);
-}
-
 /**
  * MIGRADO: Usar servicio de aplicación
  */
@@ -98,10 +94,6 @@ export function StartLiveSearch(): $CancellablePromise<$models.TradeLink[]> {
  */
 export function StopLiveSearch(): $CancellablePromise<void> {
     return $Call.ByID(3475946234);
-}
-
-export function TestLogEvent(): $CancellablePromise<void> {
-    return $Call.ByID(3249663834);
 }
 
 /**

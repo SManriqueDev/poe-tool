@@ -53,7 +53,7 @@ func (s *LiveSearchApplicationService) StartLiveSearch(ctx context.Context) erro
 	if s.state == domain.LiveSearchRunning {
 		return nil // Ya está corriendo
 	}
-
+ 
 	// Obtener solo los trade links activos (seleccionados) para iniciar búsqueda
 	tradeLinks, err := s.tradeLinkRepo.GetActiveTradeLinks(ctx)
 	if err != nil {
