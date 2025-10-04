@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"strings"
 	"sync"
 
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
@@ -132,9 +131,20 @@ func (s *LiveSearchApplicationService) runLiveSearch(ctx context.Context, tradeL
 		})
 	}
 
-	// Por ahora usar un POESESSID hardcodeado conocido para debug
-	// TODO: Obtener POESESSID desde settings repository correctamente
-	poeSessID := "16a54175b9a8539332dcfbf6994ed854" // El que vimos en la DB
+	// Obtener POESESSID desde settings repository
+	var poeSessID string
+	poeSessIDSetting, err := s.liveSearchRepo.GetSetting(ctx, "poesessid")
+	if err != nil {
+		s.logger.Warning("livesearch", "POESESSID not found in settings, WebSocket may not authenticate", map[string]interface{}{
+			"error": err.Error(),
+		})
+		poeSessID = ""
+	} else if poeSessIDSetting == nil {
+		s.logger.Warning("livesearch", "POESESSID not set in settings, WebSocket may not authenticate", nil)
+		poeSessID = ""
+	} else {
+		poeSessID = poeSessIDSetting.(string)
+	}
 
 	// Configurar POESESSID en el WebSocket client
 	if poeSessID != "" {
@@ -178,12 +188,13 @@ func (s *LiveSearchApplicationService) processTradeLink(ctx context.Context, lin
 	// Marcar como conectando
 	s.SetLinkStatus(link.ID, "connecting")
 
-	// Extraer search ID de la URL
-	searchID := s.extractSearchID(link.URL)
-	if searchID == "" {
+	// Extraer search ID de la URL usando lógica de dominio
+	searchID, err := domain.ExtractSearchID(link.URL)
+	if err != nil {
 		s.logger.Error("livesearch", "Could not extract search ID from URL", map[string]interface{}{
 			"link_id": link.ID,
 			"url":     link.URL,
+			"error":   err.Error(),
 		})
 		s.SetLinkStatus(link.ID, "error")
 		return
@@ -246,32 +257,6 @@ func (s *LiveSearchApplicationService) handleNewItem(ctx context.Context, item d
 			"error": err.Error(),
 		})
 	}
-}
-
-// extractSearchID extrae el ID de búsqueda de la URL
-func (s *LiveSearchApplicationService) extractSearchID(url string) string {
-	// URL típica: https://www.pathofexile.com/trade2/search/poe2/Rise%20of%20the%20Abyssal/4nVv4ggf9
-	// Necesitamos extraer "4nVv4ggf9" de la URL
-
-	// Buscar después del último slash
-	parts := strings.Split(url, "/")
-	if len(parts) > 0 {
-		searchID := parts[len(parts)-1]
-
-		// El search ID suele ser alfanumérico y puede tener guiones/underscores
-		if len(searchID) > 0 && searchID != "" {
-			s.logger.Info("livesearch", "Extracted search ID", map[string]interface{}{
-				"url":       url,
-				"search_id": searchID,
-			})
-			return searchID
-		}
-	}
-
-	s.logger.Warning("livesearch", "Could not extract search ID from URL", map[string]interface{}{
-		"url": url,
-	})
-	return ""
 }
 
 // GetActiveTradeLinksCount retorna el número de trade links activos
