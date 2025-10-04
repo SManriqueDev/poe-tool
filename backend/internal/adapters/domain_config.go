@@ -141,24 +141,36 @@ func DefaultDomainConfig() *DomainConfig {
 	}
 }
 
-// DomainComponentsFactory crea instancias configuradas de los componentes domain-pure
+// DomainComponentsFactory crea componentes domain-pure
 type DomainComponentsFactory struct {
 	config *DomainConfig
 	logger domain.Logger
 }
 
-// NewDomainComponentsFactory crea una nueva factory con configuración
+// NewDomainComponentsFactory crea una nueva factory
 func NewDomainComponentsFactory(config *DomainConfig, logger domain.Logger) *DomainComponentsFactory {
-	if config == nil {
-		config = DefaultDomainConfig()
-	}
 	return &DomainComponentsFactory{
 		config: config,
 		logger: logger,
 	}
 }
 
-// CreateWebSocketClient crea un WebSocket client configurado
+// CreateEventBus crea el bus de eventos del dominio
+func (f *DomainComponentsFactory) CreateEventBus() domain.EventBus {
+	eventBus := NewDomainEventBus(f.logger)
+
+	// Registrar el listener que conecta a Wails
+	wailsListener := NewWailsEventListener()
+	eventBus.RegisterNewItemListener(wailsListener)
+	eventBus.RegisterLinkStatusListener(wailsListener)
+	eventBus.RegisterLiveSearchStatusListener(wailsListener)
+
+	f.logger.Info("domain", "Event bus created with Wails integration", nil)
+
+	return eventBus
+}
+
+// CreateWebSocketClient crea un cliente WebSocket configurado
 func (f *DomainComponentsFactory) CreateWebSocketClient() domain.WebSocketClient {
 	client := NewDomainWebSocketClient(f.logger)
 
@@ -169,62 +181,40 @@ func (f *DomainComponentsFactory) CreateWebSocketClient() domain.WebSocketClient
 	client.readTimeout = f.config.WebSocket.ReadTimeout
 	client.writeTimeout = f.config.WebSocket.WriteTimeout
 
-	// Recrear canal con buffer configurado
-	if f.config.WebSocket.MessageBuffer != 100 {
-		client.messageChannel = make(chan domain.ItemResult, f.config.WebSocket.MessageBuffer)
-	}
-
 	f.logger.Info("domain", "WebSocket client created with configuration", map[string]interface{}{
-		"max_retries":    f.config.WebSocket.MaxRetries,
-		"retry_delay":    f.config.WebSocket.RetryDelay,
-		"ping_interval":  f.config.WebSocket.PingInterval,
-		"message_buffer": f.config.WebSocket.MessageBuffer,
+		"max_retries":   f.config.WebSocket.MaxRetries,
+		"retry_delay":   f.config.WebSocket.RetryDelay,
+		"ping_interval": f.config.WebSocket.PingInterval,
 	})
 
 	return client
 }
 
-// CreateEventBus crea un EventBus configurado
-func (f *DomainComponentsFactory) CreateEventBus() *DomainEventBus {
-	eventBus := NewDomainEventBus(f.logger)
-
-	f.logger.Info("domain", "EventBus created with configuration", map[string]interface{}{
-		"max_listeners":     f.config.EventBus.MaxListeners,
-		"async_emit":        f.config.EventBus.AsyncEmit,
-		"enable_metrics":    f.config.EventBus.EnableMetrics,
-		"enable_debug_logs": f.config.EventBus.EnableDebugLogs,
-	})
-
-	return eventBus
-}
-
-// CreateAPIClient crea un API client configurado
-func (f *DomainComponentsFactory) CreateAPIClient() *DomainAPIClient {
-	client := NewDomainAPIClient(f.logger)
+// CreateSystemAPIClient crea un System API Client configurado
+func (f *DomainComponentsFactory) CreateSystemAPIClient() domain.SystemAPIClient {
+	client := NewDomainSystemAPIClient(f.logger)
 
 	// Aplicar configuración específica
-	client.baseURL = f.config.APIClient.BaseURL
-	client.userAgent = f.config.APIClient.UserAgent
-	client.timeout = f.config.APIClient.Timeout
-	client.maxRetries = f.config.APIClient.MaxRetries
-	client.retryDelay = f.config.APIClient.RetryDelay
-	client.rateLimitDelay = f.config.APIClient.RateLimitDelay
+	client.SetTimeout(f.config.SystemAPIClient.Timeout)
+	client.SetRateLimit(f.config.SystemAPIClient.RateLimitDelay)
+	client.maxRetries = f.config.SystemAPIClient.MaxRetries
+	client.retryDelay = f.config.SystemAPIClient.RetryDelay
+	client.userAgent = f.config.SystemAPIClient.UserAgent
 
-	// Actualizar HTTP client con nuevo timeout
-	client.SetTimeout(f.config.APIClient.Timeout)
-
-	f.logger.Info("domain", "API client created with configuration", map[string]interface{}{
-		"base_url":         f.config.APIClient.BaseURL,
-		"timeout":          f.config.APIClient.Timeout,
-		"max_retries":      f.config.APIClient.MaxRetries,
-		"rate_limit_delay": f.config.APIClient.RateLimitDelay,
+	f.logger.Info("domain", "System API client created with configuration", map[string]interface{}{
+		"timeout":          f.config.SystemAPIClient.Timeout,
+		"max_retries":      f.config.SystemAPIClient.MaxRetries,
+		"retry_delay":      f.config.SystemAPIClient.RetryDelay,
+		"rate_limit_delay": f.config.SystemAPIClient.RateLimitDelay,
+		"user_agent":       f.config.SystemAPIClient.UserAgent,
+		"enable_logging":   f.config.SystemAPIClient.EnableLogging,
 	})
 
 	return client
 }
 
 // CreateWindowManager crea un Window Manager configurado
-func (f *DomainComponentsFactory) CreateWindowManager() *DomainWindowManager {
+func (f *DomainComponentsFactory) CreateWindowManager() domain.WindowManager {
 	manager := NewDomainWindowManager(f.logger)
 
 	// Aplicar configuración específica
@@ -240,7 +230,7 @@ func (f *DomainComponentsFactory) CreateWindowManager() *DomainWindowManager {
 }
 
 // CreateHideoutAutomation crea un Hideout Automation configurado
-func (f *DomainComponentsFactory) CreateHideoutAutomation(systemAPIClient domain.SystemAPIClient, settingsRepo domain.LiveSearchRepository) *DomainHideoutAutomation {
+func (f *DomainComponentsFactory) CreateHideoutAutomation(systemAPIClient domain.SystemAPIClient, settingsRepo domain.LiveSearchRepository) domain.HideoutAutomation {
 	automation := NewDomainHideoutAutomation(f.logger, systemAPIClient, settingsRepo)
 
 	// Aplicar configuración específica
@@ -261,29 +251,6 @@ func (f *DomainComponentsFactory) CreateHideoutAutomation(systemAPIClient domain
 	})
 
 	return automation
-}
-
-// CreateSystemAPIClient crea un System API Client configurado
-func (f *DomainComponentsFactory) CreateSystemAPIClient() *DomainSystemAPIClient {
-	client := NewDomainSystemAPIClient(f.logger)
-
-	// Aplicar configuración específica
-	client.SetTimeout(f.config.SystemAPIClient.Timeout)
-	client.SetRateLimit(f.config.SystemAPIClient.RateLimitDelay)
-	client.maxRetries = f.config.SystemAPIClient.MaxRetries
-	client.retryDelay = f.config.SystemAPIClient.RetryDelay
-	client.userAgent = f.config.SystemAPIClient.UserAgent
-
-	f.logger.Info("domain", "System API client created with configuration", map[string]interface{}{
-		"timeout":          f.config.SystemAPIClient.Timeout,
-		"max_retries":      f.config.SystemAPIClient.MaxRetries,
-		"retry_delay":      f.config.SystemAPIClient.RetryDelay,
-		"rate_limit_delay": f.config.SystemAPIClient.RateLimitDelay,
-		"user_agent":       f.config.SystemAPIClient.UserAgent,
-		"enable_logging":   f.config.SystemAPIClient.EnableLogging,
-	})
-
-	return client
 }
 
 // GetConfig retorna la configuración actual

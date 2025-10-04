@@ -55,9 +55,8 @@ interface ItemResult {
 }
 
 interface NewItemsFoundEventData {
-	searchID: string;
+	searchId: string;
 	items: ItemResult[];
-	count: number;
 }
 
 interface WailsEvent<T = unknown> {
@@ -202,14 +201,14 @@ export default function LiveSearch() {
 		);
 
 		const offNewItems = Events.On(
-			"livesearch:newItemsFound",
+			"livesearch:new-items",
 			(ev: WailsEvent<NewItemsFoundEventData>) => {
 				// In Wails v3, the actual data is in ev.data[0]
 				const data = ev.data[0] || ev.data;
 
 				// Show toast notification
-				toast(`Found ${data.count} new item${data.count > 1 ? "s" : ""}!`, {
-					description: `Search ID: ${data.searchID}`,
+				toast(`Found ${data.items?.length || 0} new item${(data.items?.length || 0) > 1 ? "s" : ""}!`, {
+					description: `Search ID: ${data.searchId}`,
 					action: {
 						label: "View",
 						onClick: () => {
@@ -221,9 +220,27 @@ export default function LiveSearch() {
 			},
 		);
 
+		const offLiveSearchStarted = Events.On(
+			"livesearch:started",
+			() => {
+				setIsLiveSearchRunning(true);
+				toast("Live search started!");
+			},
+		);
+
+		const offLiveSearchStopped = Events.On(
+			"livesearch:stopped",
+			() => {
+				setIsLiveSearchRunning(false);
+				toast("Live search stopped!");
+			},
+		);
+
 		return () => {
 			offStatusChanged();
 			offNewItems();
+			offLiveSearchStarted();
+			offLiveSearchStopped();
 		};
 	}, []);
 

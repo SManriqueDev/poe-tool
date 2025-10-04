@@ -42,10 +42,6 @@ func NewApp() *App {
 
 	domainWebSocketClient := domainFactory.CreateWebSocketClient()
 	domainEventBus := domainFactory.CreateEventBus()
-	domainAPIClient := domainFactory.CreateAPIClient()
-
-	// FASE 5: Usar todos los componentes domain en LiveSearchApplicationService
-	_ = domainAPIClient
 
 	domainSystemAPIClient := domainFactory.CreateSystemAPIClient()
 	domainWindowManager := domainFactory.CreateWindowManager()
