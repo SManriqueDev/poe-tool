@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useReducer, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { toast } from "sonner";
 
@@ -63,6 +63,27 @@ interface WailsEvent<T = unknown> {
 	data: T[];
 }
 
+// Reducer para manejar actualizaciones de estado de links de manera thread-safe
+type LinkAction =
+	| { type: 'UPDATE_STATUS'; linkID: number; status: string }
+	| { type: 'SET_LINKS'; links: TradeLink[] }
+	| { type: 'UPDATE_LINK'; link: TradeLink };
+
+const linkReducer = (state: TradeLink[], action: LinkAction): TradeLink[] => {
+	switch (action.type) {
+		case 'UPDATE_STATUS':
+			return state.map((l) =>
+				l.id === action.linkID ? { ...l, status: action.status } : l
+			);
+		case 'SET_LINKS':
+			return action.links;
+		case 'UPDATE_LINK':
+			return state.map((l) => (l.id === action.link.id ? action.link : l));
+		default:
+			return state;
+	}
+};
+
 // interface NewItemsEvent {
 // 	searchID: string;
 // 	items: {
@@ -77,7 +98,7 @@ export default function LiveSearch() {
 	const checkboxId = useId();
 	const [url, setUrl] = useState("");
 	const [description, setDescription] = useState("");
-	const [links, setLinks] = useState<TradeLink[]>([]);
+	const [links, dispatch] = useReducer(linkReducer, []);
 	const [editIdx, setEditIdx] = useState<number | null>(null);
 	const [editUrl, setEditUrl] = useState("");
 	const [editDescription, setEditDescription] = useState("");
@@ -155,13 +176,13 @@ export default function LiveSearch() {
 					};
 				});
 
-				setLinks(linksWithStatus);
+				dispatch({ type: 'SET_LINKS', links: linksWithStatus });
 			})
 			.catch((error) => {
 				console.error("Failed to load trade links or statuses:", error);
 				// Fallback to just loading links
 				listTradeLinks().then((links) => {
-					setLinks(links);
+					dispatch({ type: 'SET_LINKS', links });
 				});
 			});
 
@@ -188,23 +209,13 @@ export default function LiveSearch() {
 			(ev: WailsEvent<{linkID: number; status: string}>) => {
 				const data = ev.data[0] || ev.data;
 
-				setLinks((prev) => {
-					const updated = prev.map((l) => {
-						if (l.id === data.linkID) {
-							// Solo actualizar el status, no sobrescribir todo el objeto
-							return { ...l, status: data.status };
-						}
-						return l;
-					});
-					return updated;
-				});
+				dispatch({ type: 'UPDATE_STATUS', linkID: data.linkID, status: data.status });
 			},
 		);
 
 		const offNewItems = Events.On(
 			"livesearch:new-items",
 			(ev: WailsEvent<NewItemsFoundEventData>) => {
-				// In Wails v3, the actual data is in ev.data[0]
 				const data = ev.data[0] || ev.data;
 
 				// Show toast notification
@@ -259,13 +270,13 @@ export default function LiveSearch() {
 			...link,
 			status: statuses[link.id] || link.status || "idle",
 		}));
-		setLinks(linksWithStatus);
+		dispatch({ type: 'SET_LINKS', links: linksWithStatus });
 		toast("Link added!");
 	};
 
 	const handleDelete = async (idx: number) => {
 		const updated = links.filter((_, i) => i !== idx);
-		setLinks(updated);
+		dispatch({ type: 'SET_LINKS', links: updated });
 		await deleteTradeLink(links[idx].id);
 		toast("Link deleted!");
 	};
@@ -290,7 +301,7 @@ export default function LiveSearch() {
 			...link,
 			status: statuses[link.id] || link.status || "idle",
 		}));
-		setLinks(linksWithStatus);
+		dispatch({ type: 'SET_LINKS', links: linksWithStatus });
 		setEditIdx(null);
 		toast("Link updated!");
 	};
@@ -318,7 +329,7 @@ export default function LiveSearch() {
 		const link = links[idx];
 		await updateTradeLink(link.id, { ...link, selected } as TradeLink);
 		const updatedLinks = await listTradeLinks();
-		setLinks(updatedLinks);
+		dispatch({ type: 'SET_LINKS', links: updatedLinks });
 	};
 
 	const handleGoToHideoutChange = async (checked: boolean) => {
