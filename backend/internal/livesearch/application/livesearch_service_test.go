@@ -121,6 +121,10 @@ func (m *mockWebSocketClient) GetMessageChannel() <-chan domain.ItemResult {
 	return ch
 }
 
+func (m *mockWebSocketClient) SetPOESESSID(poeSessID string) {
+	// Mock implementation - no-op for testing
+}
+
 type mockEventBus struct {
 	events []string
 }
