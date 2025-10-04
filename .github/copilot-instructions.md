@@ -1,7 +1,7 @@
 # AI Coding Instructions for Poe Tool
 
 ## Project Overview
-**Poe Tool** is a Wails v3 desktop application with a Go backend and React/TypeScript frontend. It's designed as a Path of Exile trade automation tool featuring real-time live search monitoring and automatic hideout teleportation. The app uses a modern stack: React 18, TypeScript, Shadcn UI, Tailwind CSS 4, and SQLite for persistence.
+**Poe Tool** is a Wails v3 desktop application with a Go backend and React/TypeScript frontend for Path of Exile trade automation. Features real-time live search monitoring and automatic hideout teleportation.
 
 ## Architecture & Key Components
 
@@ -13,19 +13,18 @@
 - **Domain Layer**: Interfaces and models in `backend/internal/livesearch/domain/` defining contracts
 - **Adapters**: Infrastructure implementations in `backend/internal/adapters/` bridging domain interfaces
 - **Database**: SQLite via `backend/db/database.go` with Goose migrations in `migrations/`
-- **Service Dependencies**: Cross-service injection (e.g., `livesearch` depends on `settings` and `logging`)
 
 ### Frontend Structure (React/TypeScript)
 - **Build Tool**: Vite with TypeScript
 - **UI Framework**: Shadcn UI components on Tailwind CSS 4
 - **Layout**: `Layout.tsx` with sidebar navigation (`AppSidebar`)
-- **Wails Integration**: Generated bindings in `wailsjs/` for Go method calls (auto-regenerated with `wails3 dev`)
+- **Wails Integration**: Generated bindings in `wailsjs/go/` for Go method calls (auto-regenerated with `wails3 dev`)
 - **Services**: TypeScript wrappers in `src/services/` for backend calls with type safety
 - **Real-time Updates**: Wails events for backend → frontend communication (e.g., `EventsOn("linkStatusChanged")`)
 
-### Key Patterns
+## Key Patterns
 
-#### Backend Service Creation & Dependency Injection
+### Backend Service Creation & Dependency Injection
 ```go
 // Services created in backend/app.go with explicit dependency injection
 func NewApp() *App {
@@ -49,7 +48,7 @@ func NewApp() *App {
 }
 ```
 
-#### Application Service Pattern
+### Application Service Pattern
 ```go
 // Application services implement use cases using domain interfaces
 type TradeLinkApplicationService struct {
@@ -63,29 +62,29 @@ func (s *TradeLinkApplicationService) AddTradeLink(ctx context.Context, url, des
 }
 ```
 
-#### Wails v3 Service Binding Pattern
+### Wails v3 Service Binding Pattern
 ```go
 // In main.go - services auto-bound to frontend
 wailsApp := application.New(application.Options{
     Services: []application.Service{
         application.NewService(app.SettingsHandler),
         application.NewService(app.LiveSearchHandler),
-        application.NewService(app.LoggingHandler),  // New logging module
+        application.NewService(app.LoggingHandler),
     },
 })
 ```
 
-#### Frontend-Backend Communication
+### Frontend-Backend Communication
 - Go methods bound in `main.go` become callable JS functions
 - Generated TypeScript bindings in `wailsjs/go/[module]/Handler.js`
 - Service layer wraps Wails calls: `src/services/liveSearchService.ts`
 - Real-time updates via Wails events: `EventsOn("linkStatusChanged", callback)`
 
-#### Database Conventions
+### Database Conventions
 - SQLite with migrations in `migrations/` (Goose format: `00001_create_tables.sql`)
-- Repository pattern for data access with standard CRUD methods
-- Tables: `trade_links`, `settings`, `live_search_settings`, `logs` (with performance indexes)
-- Settings stored as key-value pairs; logging with structured metadata
+- Repository pattern with standard CRUD methods
+- Settings stored as key-value pairs in dedicated table
+- Use transactions for multi-table operations
 
 ## Development Workflow
 
@@ -139,10 +138,9 @@ wails3 task windows:build # Cross-compile Windows
 - Frontend features: Organize by domain in `src/pages/` and `src/[feature]/`
 - Shared UI: `src/components/ui/` (Shadcn) and `src/components/` (custom)
 
-### Clean Architecture Migration Status
-- **Phase 1-4 Complete**: Domain interfaces, application services, and adapter implementations
-- **Phase 5**: Integrating domain components into application services
-- **Current State**: Hybrid architecture with legacy service layer + new clean architecture components
+### Clean Architecture Status
+- **Completed**: Domain interfaces, application services, and adapter implementations
+- **Current State**: Full clean architecture with domain components integrated into application services
 - **Migration Pattern**: Domain components created via factory, injected into application services
 
 ### Styling Approach
@@ -187,6 +185,6 @@ wails3 task windows:build # Cross-compile Windows
 
 ## Testing Strategy
 - Application service tests in `backend/internal/livesearch/application/`
-- No integrated test framework currently configured
+- Repository tests for data access layer
 - Manual testing via `make dev` and frontend interaction
 - Database testing can use temporary SQLite files
