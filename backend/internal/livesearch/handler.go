@@ -39,27 +39,18 @@ func (h *Handler) AddTradeLink(url string, description string) {
 	}
 }
 
-// MIGRADO: Usar servicio de aplicación (mantener compatibilidad con frontend)
-func (h *Handler) ListTradeLinks() []TradeLink {
+// MIGRADO: Usar servicio de aplicación (sin conversión, devuelve domain.TradeLink directamente)
+func (h *Handler) ListTradeLinks() []domain.TradeLink {
 	ctx := context.Background()
 	domainTradeLinks, err := h.tradeLinkAppSvc.ListTradeLinks(ctx)
 	if err != nil {
-		// En caso de error, devolver slice vacío para mantener compatibilidad
-		return []TradeLink{}
-	}
-
-	// Convertir a modelo actual para mantener compatibilidad con frontend
-	var tradeLinks []TradeLink
-	for _, dtl := range domainTradeLinks {
-		tradeLinks = append(tradeLinks, TradeLink{
-			ID:          dtl.ID,
-			URL:         dtl.URL,
-			Description: dtl.Description,
-			Selected:    dtl.Selected,
+		// Log error y devolver slice vacío
+		h.logger.Error("livesearch", "Failed to list trade links", map[string]interface{}{
+			"error": err.Error(),
 		})
+		return []domain.TradeLink{}
 	}
-
-	return tradeLinks
+	return domainTradeLinks
 }
 
 // MIGRADO: Usar servicio de aplicación

@@ -1,3 +1,4 @@
+import type { TradeLink as GoTradeLink } from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain/models";
 import { Handler } from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/livesearch/index.js";
 
 // Define proper TradeLink interface based on the Go model
@@ -24,7 +25,7 @@ export async function updateTradeLink(
 	return Handler.UpdateTradeLink(id, link.url, link.description, link.selected);
 }
 
-export async function listTradeLinks(): Promise<TradeLink[]> {
+export async function listTradeLinks(): Promise<GoTradeLink[]> {
 	return Handler.ListTradeLinks();
 }
 
@@ -64,4 +65,3 @@ export async function getAllLinkStatuses(): Promise<Record<number, string>> {
 export async function openLogsWindow(): Promise<void> {
 	return Handler.OpenLogsWindow();
 }
-

@@ -8,6 +8,7 @@ type TradeLink struct {
 	URL         string    `json:"url"`
 	Description string    `json:"description"`
 	Selected    bool      `json:"selected"`
+	Status      string    `json:"status"` // e.g., "connected", "auth-error", "error"
 	CreatedAt   time.Time `json:"created_at"`
 }
 
