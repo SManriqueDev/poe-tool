@@ -49,6 +49,8 @@ func (r *DomainTradeLinkRepository) GetActiveTradeLinks(ctx context.Context) ([]
 			link.CreatedAt = time.Now()
 		}
 
+		link.ComputeDerivedFields()
+
 		links = append(links, link)
 	}
 
@@ -81,6 +83,8 @@ func (r *DomainTradeLinkRepository) GetByID(ctx context.Context, id int) (*domai
 	} else {
 		link.CreatedAt = time.Now()
 	}
+
+	link.ComputeDerivedFields()
 
 	return &link, nil
 }
@@ -180,6 +184,8 @@ func (r *DomainTradeLinkRepository) List(ctx context.Context) ([]domain.TradeLin
 		} else {
 			link.CreatedAt = time.Now()
 		}
+
+		link.ComputeDerivedFields()
 
 		links = append(links, link)
 	}

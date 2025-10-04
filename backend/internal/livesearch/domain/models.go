@@ -1,6 +1,10 @@
 package domain
 
-import "time"
+import (
+	"net/url"
+	"strings"
+	"time"
+)
 
 // TradeLink representa un enlace de búsqueda de trade
 type TradeLink struct {
@@ -9,7 +13,33 @@ type TradeLink struct {
 	Description string    `json:"description"`
 	Selected    bool      `json:"selected"`
 	Status      string    `json:"status"` // e.g., "connected", "auth-error", "error"
+	League      string    `json:"league"`
+	SearchID    string    `json:"search_id"`
 	CreatedAt   time.Time `json:"created_at"`
+}
+
+func (t *TradeLink) ComputeDerivedFields() {
+	u, err := url.Parse(t.URL)
+	if err != nil {
+		return
+	}
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(parts) >= 2 {
+		t.League = parts[len(parts)-2]
+		t.SearchID = parts[len(parts)-1]
+	}
+}
+
+func NewTradeLink(url, description string, selected bool, status string) *TradeLink {
+	tl := &TradeLink{
+		URL:         url,
+		Description: description,
+		Selected:    selected,
+		Status:      status,
+		CreatedAt:   time.Now(),
+	}
+	tl.ComputeDerivedFields()
+	return tl
 }
 
 // LiveSearchState representa el estado de la búsqueda en vivo

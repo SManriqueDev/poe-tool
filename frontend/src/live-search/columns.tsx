@@ -55,7 +55,7 @@ export const getColumns = (actions: ActionsProps): ColumnDef<TradeLink>[] => [
 		enableHiding: false,
 	},
 	{
-		accessorKey: "searchId",
+		accessorKey: "search_id",
 		header: "Search ID",
 	},
 	{
