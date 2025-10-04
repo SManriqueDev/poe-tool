@@ -185,13 +185,14 @@ export default function LiveSearch() {
 
 		const offStatusChanged = Events.On(
 			"linkStatusChanged",
-			(ev: WailsEvent<TradeLink>) => {
-				const link = ev.data[0] || ev.data;
+			(ev: WailsEvent<{linkID: number; status: string}>) => {
+				const data = ev.data[0] || ev.data;
+
 				setLinks((prev) => {
 					const updated = prev.map((l) => {
-						if (l.id === link.id) {
+						if (l.id === data.linkID) {
 							// Solo actualizar el status, no sobrescribir todo el objeto
-							return { ...l, status: link.status };
+							return { ...l, status: data.status };
 						}
 						return l;
 					});
@@ -223,6 +224,7 @@ export default function LiveSearch() {
 		const offLiveSearchStarted = Events.On(
 			"livesearch:started",
 			() => {
+        console.log("Live search started event received");
 				setIsLiveSearchRunning(true);
 				toast("Live search started!");
 			},
