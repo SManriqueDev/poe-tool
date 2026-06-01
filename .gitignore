@@ -59,3 +59,8 @@ poe_tool.db
 
 # Code signing
 */_CodeSignature/
+
+
+.agents/
+.opencode/
+openspec/

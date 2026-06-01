@@ -30,7 +30,7 @@ type Service struct {
 	systemAPIClient   domain.SystemAPIClient
 
 	// Legacy fields (serán eliminados en Fase 5)
-	links             []TradeLink
+	links             []domain.TradeLink
 	mu                sync.Mutex
 	settingsSvc       *settings.Service
 	loggingSvc        *logging.Service
@@ -198,7 +198,7 @@ func (s *Service) fetchItemDetails(itemIDs []string, searchId string) (*ItemFetc
 }
 
 // logNewItem creates a log entry for a new item found during live search
-func (s *Service) logNewItem(item ItemResult, searchID string, tradeLink *TradeLink) {
+func (s *Service) logNewItem(item ItemResult, searchID string, tradeLink *domain.TradeLink) {
 	// Extract item name from the item JSON
 	var itemData map[string]interface{}
 	if err := json.Unmarshal(item.Item, &itemData); err != nil {
@@ -245,7 +245,7 @@ func (s *Service) logNewItem(item ItemResult, searchID string, tradeLink *TradeL
 	league := "Unknown"
 	searchURL := ""
 	if tradeLink != nil {
-		league = tradeLink.League()
+		league = tradeLink.League
 		searchURL = tradeLink.URL
 	}
 
@@ -278,7 +278,7 @@ func NewService(settingsSvc *settings.Service, loggingSvc *logging.Service) *Ser
 		systemAPIClient:   nil,
 
 		// Legacy fields (will be refactored in future phases)
-		links:          make([]TradeLink, 0),
+		links:          make([]domain.TradeLink, 0),
 		settingsSvc:    settingsSvc,
 		loggingSvc:     loggingSvc,
 		repo:           repo,
@@ -342,7 +342,7 @@ func (s *Service) AddTradeLink(url string, description string) {
 	}
 }
 
-func (s *Service) ListTradeLinks() []TradeLink {
+func (s *Service) ListTradeLinks() []domain.TradeLink {
 	// Delegate to TradeLinkManager
 	links, err := s.tradeLinkMgr.List()
 	if err != nil {
@@ -350,18 +350,18 @@ func (s *Service) ListTradeLinks() []TradeLink {
 		s.loggingSvc.Error("livesearch", "Failed to list trade links", map[string]interface{}{
 			"error": err.Error(),
 		})
-		return []TradeLink{}
+		return []domain.TradeLink{}
 	}
 	return links
 }
 
-func (s *Service) StartLiveSearch() []TradeLink {
+func (s *Service) StartLiveSearch() []domain.TradeLink {
 	cfg := s.settingsSvc.Get()
 	poeSess := cfg.PoeSessid
 
 	links, err := s.repo.GetTradeLinks()
 	if err != nil {
-		return []TradeLink{}
+		return []domain.TradeLink{}
 	}
 
 	// Cancelar búsqueda previa si estaba corriendo
@@ -382,7 +382,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 	s.cleanupOldProcessedItems()
 
 	// Filtrar links seleccionados
-	var selectedLinks []TradeLink
+	var selectedLinks []domain.TradeLink
 	for _, link := range links {
 		if link.Selected {
 			selectedLinks = append(selectedLinks, link)
@@ -393,7 +393,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 	}
 
 	// Copia inicial de los links
-	statusLinks := make([]TradeLink, len(links))
+	statusLinks := make([]domain.TradeLink, len(links))
 	copy(statusLinks, links)
 
 	// Canal para mensajes de sockets
@@ -436,9 +436,9 @@ func (s *Service) StartLiveSearch() []TradeLink {
 				s.eventBus.EmitNewItems(s.ctx, msg.SearchID, itemResp.Result)
 
 				// Find the trade link for more context
-				var tradeLink *TradeLink
+				var tradeLink *domain.TradeLink
 				for _, link := range links {
-					if link.SearchID() == msg.SearchID {
+					if link.SearchID == msg.SearchID {
 						tradeLink = &link
 						break
 					}
@@ -488,7 +488,7 @@ func (s *Service) StartLiveSearch() []TradeLink {
 			continue
 		}
 		s.liveSearchWG.Add(1)
-		go func(idx int, link TradeLink) {
+		go func(idx int, link domain.TradeLink) {
 			defer s.liveSearchWG.Done()
 
 			conn, resp, err := s.wsClient.Connect(ctx, link, poeSess)
@@ -548,9 +548,9 @@ func (s *Service) StartLiveSearch() []TradeLink {
 						return
 					}
 					select {
-					case msgCh <- WSMessage{SearchID: link.SearchID(), Message: message}:
+					case msgCh <- WSMessage{SearchID: link.SearchID, Message: message}:
 					default:
-						log.Printf("msgCh full, dropping message for %s", link.SearchID())
+						log.Printf("msgCh full, dropping message for %s", link.SearchID)
 					}
 				}
 			}

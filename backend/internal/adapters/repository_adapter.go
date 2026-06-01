@@ -2,7 +2,6 @@ package adapters
 
 import (
 	"context"
-	"time"
 
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch"
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
@@ -18,36 +17,21 @@ func NewRepositoryAdapter(repo *livesearch.Repository) *RepositoryAdapter {
 	return &RepositoryAdapter{repo: repo}
 }
 
-// convertLegacyToDomain convierte un TradeLink legacy al formato domain
-func (a *RepositoryAdapter) convertLegacyToDomain(tl *livesearch.TradeLink) domain.TradeLink {
-	// Por ahora usamos time.Now() ya que el modelo legacy no tiene CreatedAt
-	// En el futuro podríamos obtener este valor de la base de datos directamente
-	return domain.TradeLink{
-		ID:          tl.ID,
-		URL:         tl.URL,
-		Description: tl.Description,
-		Selected:    tl.Selected,
-		CreatedAt:   time.Now(), // Temporal hasta que migremos el modelo legacy
-	}
-}
-
 // GetActiveTradeLinks obtiene los trade links activos
 func (a *RepositoryAdapter) GetActiveTradeLinks(ctx context.Context) ([]domain.TradeLink, error) {
-	// Usar el método existente
-	oldTradeLinks, err := a.repo.GetTradeLinks()
+	tradeLinks, err := a.repo.GetTradeLinks()
 	if err != nil {
 		return nil, err
 	}
 
-	// Convertir al formato del dominio
-	var tradeLinks []domain.TradeLink
-	for _, tl := range oldTradeLinks {
-		if tl.Selected { // Solo los seleccionados
-			tradeLinks = append(tradeLinks, a.convertLegacyToDomain(&tl))
+	var active []domain.TradeLink
+	for _, tl := range tradeLinks {
+		if tl.Selected {
+			active = append(active, tl)
 		}
 	}
 
-	return tradeLinks, nil
+	return active, nil
 }
 
 // GetByID obtiene un trade link por ID
@@ -59,8 +43,7 @@ func (a *RepositoryAdapter) GetByID(ctx context.Context, id int) (*domain.TradeL
 
 	for _, tl := range tradeLinks {
 		if tl.ID == id {
-			converted := a.convertLegacyToDomain(&tl)
-			return &converted, nil
+			return &tl, nil
 		}
 	}
 
@@ -84,18 +67,7 @@ func (a *RepositoryAdapter) Delete(ctx context.Context, id int) error {
 
 // List obtiene todos los trade links
 func (a *RepositoryAdapter) List(ctx context.Context) ([]domain.TradeLink, error) {
-	oldTradeLinks, err := a.repo.GetTradeLinks()
-	if err != nil {
-		return nil, err
-	}
-
-	// Convertir al formato del dominio
-	var tradeLinks []domain.TradeLink
-	for _, tl := range oldTradeLinks {
-		tradeLinks = append(tradeLinks, a.convertLegacyToDomain(&tl))
-	}
-
-	return tradeLinks, nil
+	return a.repo.GetTradeLinks()
 }
 
 // GetAll es un alias para List para compatibilidad

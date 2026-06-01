@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 
-import { livesearch } from "~wails/go/models";
-
-import TradeLink = livesearch.TradeLink;
+import type { TradeLink } from "../../bindings/github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain/models";
 
 type ActionsProps = {
 	editIdx: number | null;
@@ -55,7 +53,7 @@ export const getColumns = (actions: ActionsProps): ColumnDef<TradeLink>[] => [
 		enableHiding: false,
 	},
 	{
-		accessorKey: "search_id",
+		accessorKey: "searchId",
 		header: "Search ID",
 	},
 	{

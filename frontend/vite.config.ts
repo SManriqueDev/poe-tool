@@ -6,17 +6,20 @@ import path from "node:path";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-	plugins: [react(), tailwindcss()],
-	resolve: {
-		alias: {
-			"@": path.resolve(__dirname, "./src"),
-			"~wails": path.resolve(__dirname, "./wailsjs"),
-		},
-	},
-	server: {
-		hmr: {
-			host: "localhost",
-			protocol: "ws",
-		},
-	},
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      "~wails": path.resolve(__dirname, "./wailsjs"),
+    },
+  },
+  server: {
+    hmr: {
+      host: "localhost",
+      protocol: "ws",
+    },
+    watch: {
+      ignored: ["**/frontend/bindings/**", "**/frontend/.bindings-tmp-*/**"],
+    },
+  },
 });

@@ -2,11 +2,13 @@ package livesearch
 
 import (
 	"testing"
+
+	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
 )
 
 // MockTradeRepository implements RepositoryInterface for testing TradeLinkManager
 type MockTradeRepository struct {
-	links      []TradeLink
+	links      []domain.TradeLink
 	nextID     int
 	shouldFail bool
 	failOn     string // "add", "get", "update", "delete"
@@ -14,7 +16,7 @@ type MockTradeRepository struct {
 
 func NewMockTradeRepository() *MockTradeRepository {
 	return &MockTradeRepository{
-		links:  make([]TradeLink, 0),
+		links:  make([]domain.TradeLink, 0),
 		nextID: 1,
 	}
 }
@@ -29,7 +31,7 @@ func (m *MockTradeRepository) AddTradeLink(url, description string) error {
 		return MockError("mock add error")
 	}
 
-	link := TradeLink{
+	link := domain.TradeLink{
 		ID:          m.nextID,
 		URL:         url,
 		Description: description,
@@ -40,11 +42,11 @@ func (m *MockTradeRepository) AddTradeLink(url, description string) error {
 	return nil
 }
 
-func (m *MockTradeRepository) GetTradeLinks() ([]TradeLink, error) {
+func (m *MockTradeRepository) GetTradeLinks() ([]domain.TradeLink, error) {
 	if m.shouldFail && m.failOn == "get" {
 		return nil, MockError("mock get error")
 	}
-	return append([]TradeLink{}, m.links...), nil
+	return append([]domain.TradeLink{}, m.links...), nil
 }
 
 func (m *MockTradeRepository) UpdateTradeLink(id int, url, description string, selected bool) error {

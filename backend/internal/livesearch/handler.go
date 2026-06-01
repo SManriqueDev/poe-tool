@@ -60,7 +60,7 @@ func (h *Handler) UpdateTradeLink(id int, url string, description string, select
 }
 
 // StartLiveSearch inicia la búsqueda en vivo usando Clean Architecture
-func (h *Handler) StartLiveSearch() []TradeLink {
+func (h *Handler) StartLiveSearch() []domain.TradeLink {
 	ctx := context.Background()
 
 	// Usar LiveSearchApplicationService nativo (ya no legacy)
@@ -79,31 +79,7 @@ func (h *Handler) StartLiveSearch() []TradeLink {
 		})
 	}
 
-	// Convertir domain links a model links para compatibilidad con frontend
-	return h.convertDomainToModelLinks(domainLinks)
-}
-
-// Helper para logging de errores
-// func (h *Handler) logError(message string, err error) {
-// 	if h.svc != nil && h.svc.loggingSvc != nil {
-// 		h.svc.loggingSvc.Error("livesearch", message, map[string]interface{}{
-// 			"error": err.Error(),
-// 		})
-// 	}
-// }
-
-// Helper para conversión de domain a model
-func (h *Handler) convertDomainToModelLinks(domainLinks []domain.TradeLink) []TradeLink {
-	var modelLinks []TradeLink
-	for _, dl := range domainLinks {
-		modelLinks = append(modelLinks, TradeLink{
-			ID:          dl.ID,
-			URL:         dl.URL,
-			Description: dl.Description,
-			Selected:    dl.Selected,
-		})
-	}
-	return modelLinks
+	return domainLinks
 }
 
 // StopLiveSearch detiene la búsqueda en vivo usando Clean Architecture

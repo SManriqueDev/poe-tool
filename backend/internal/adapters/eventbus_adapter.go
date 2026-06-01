@@ -42,7 +42,7 @@ func (a *EventBusAdapter) EmitNewItems(ctx context.Context, searchID string, ite
 func (a *EventBusAdapter) EmitLinkStatusChanged(ctx context.Context, linkID int, status string) error {
 	// Crear un TradeLink básico para el evento
 	// En el futuro se puede mejorar para obtener el TradeLink completo
-	link := livesearch.TradeLink{
+	link := domain.TradeLink{
 		ID:          linkID,
 		URL:         "",
 		Description: "",

@@ -58,7 +58,7 @@ export async function isLiveSearchRunning(): Promise<boolean> {
 // 	return Handler.IsHideoutProcessing();
 // }
 
-export async function getAllLinkStatuses(): Promise<Record<number, string>> {
+export async function getAllLinkStatuses(): Promise<any> {
 	return Handler.GetAllLinkStatuses();
 }
 

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
 	"github.com/corpix/uarand"
 	"github.com/gorilla/websocket"
 )
@@ -17,11 +18,11 @@ func NewWebSocketClient() *WebSocketClient {
 	return &WebSocketClient{}
 }
 
-func (c *WebSocketClient) Connect(ctx context.Context, link TradeLink, poeSess string) (*websocket.Conn, *http.Response, error) {
+func (c *WebSocketClient) Connect(ctx context.Context, link domain.TradeLink, poeSess string) (*websocket.Conn, *http.Response, error) {
 	wsURL := url.URL{
 		Scheme: "wss",
 		Host:   "www.pathofexile.com",
-		Path:   "/api/trade2/live/poe2/" + link.League() + "/" + link.SearchID(),
+		Path:   "/api/trade2/live/poe2/" + link.League + "/" + link.SearchID,
 	}
 	log.Println("Connecting to WebSocket URL:", wsURL.String())
 	header := http.Header{}

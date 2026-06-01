@@ -2,8 +2,10 @@ package livesearch
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/SManriqueDev/poe-tool/backend/db"
+	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
 )
 
 type LiveSearchSetting struct {
@@ -25,14 +27,14 @@ func (r *Repository) AddTradeLink(url, description string) error {
 	return err
 }
 
-func (r *Repository) GetTradeLinks() ([]TradeLink, error) {
+func (r *Repository) GetTradeLinks() ([]domain.TradeLink, error) {
 	rows, err := r.db.Query("SELECT id, url, description, selected, COALESCE(created_at, datetime('now')) FROM trade_links")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var links []TradeLink
+	var links []domain.TradeLink
 	for rows.Next() {
 		var id int
 		var url, description string
@@ -43,15 +45,16 @@ func (r *Repository) GetTradeLinks() ([]TradeLink, error) {
 			return nil, err
 		}
 
-		tl := NewTradeLink(
-			WithID(id),
-			WithURL(url),
-			WithDescription(description),
-			WithSelected(selected),
-			WithStatus("idle"),
-		)
-		// Agregar createdAt al TradeLink (puede requerir modificar el modelo legacy)
-		links = append(links, *tl)
+		parsedTime, _ := time.Parse("2006-01-02 15:04:05", createdAt)
+		tl := domain.TradeLink{
+			ID:          id,
+			URL:         url,
+			Description: description,
+			Selected:    selected,
+			CreatedAt:   parsedTime,
+		}
+		tl.ComputeDerivedFields()
+		links = append(links, tl)
 	}
 	return links, nil
 }

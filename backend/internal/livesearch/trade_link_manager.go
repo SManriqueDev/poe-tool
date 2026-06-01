@@ -3,12 +3,14 @@ package livesearch
 import (
 	"fmt"
 	"sync"
+
+	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
 )
 
 // RepositoryInterface defines the contract for data access operations
 type RepositoryInterface interface {
 	AddTradeLink(url, description string) error
-	GetTradeLinks() ([]TradeLink, error)
+	GetTradeLinks() ([]domain.TradeLink, error)
 	UpdateTradeLink(id int, url, description string, selected bool) error
 	DeleteTradeLink(id int) error
 	InitializeLiveSearchSetting(name string, enabled bool) error
@@ -19,10 +21,10 @@ type RepositoryInterface interface {
 // TradeLinkManagerInterface defines the contract for managing trade links
 type TradeLinkManagerInterface interface {
 	Add(url, description string) error
-	List() ([]TradeLink, error)
+	List() ([]domain.TradeLink, error)
 	Update(id int, url, description string, selected bool) error
 	Delete(id int) error
-	GetByID(id int) (*TradeLink, error)
+	GetByID(id int) (*domain.TradeLink, error)
 }
 
 // TradeLinkManager handles all trade link related operations
@@ -68,11 +70,7 @@ func (tm *TradeLinkManager) Add(url, description string) error {
 		return fmt.Errorf("description cannot be empty")
 	}
 
-	// Create the trade link
-	link := NewIdleTradeLink(url, description)
-
-	// Add to repository
-	if err := tm.repo.AddTradeLink(link.URL, link.Description); err != nil {
+	if err := tm.repo.AddTradeLink(url, description); err != nil {
 		return fmt.Errorf("failed to add trade link: %w", err)
 	}
 
@@ -80,7 +78,7 @@ func (tm *TradeLinkManager) Add(url, description string) error {
 }
 
 // List retrieves all trade links
-func (tm *TradeLinkManager) List() ([]TradeLink, error) {
+func (tm *TradeLinkManager) List() ([]domain.TradeLink, error) {
 	tm.mu.RLock()
 	defer tm.mu.RUnlock()
 
@@ -89,19 +87,7 @@ func (tm *TradeLinkManager) List() ([]TradeLink, error) {
 		return nil, fmt.Errorf("failed to get trade links: %w", err)
 	}
 
-	var tradeLinks []TradeLink
-	for _, l := range links {
-		tl := NewTradeLink(
-			WithID(l.ID),
-			WithURL(l.URL),
-			WithDescription(l.Description),
-			WithSelected(l.Selected),
-			WithStatus("idle"),
-		)
-		tradeLinks = append(tradeLinks, *tl)
-	}
-
-	return tradeLinks, nil
+	return links, nil
 }
 
 // Update modifies an existing trade link
@@ -147,7 +133,7 @@ func (tm *TradeLinkManager) Delete(id int) error {
 }
 
 // GetByID retrieves a specific trade link by ID
-func (tm *TradeLinkManager) GetByID(id int) (*TradeLink, error) {
+func (tm *TradeLinkManager) GetByID(id int) (*domain.TradeLink, error) {
 	tm.mu.RLock()
 	defer tm.mu.RUnlock()
 
@@ -156,8 +142,6 @@ func (tm *TradeLinkManager) GetByID(id int) (*TradeLink, error) {
 		return nil, fmt.Errorf("invalid ID: %d", id)
 	}
 
-	// This would require adding a GetByID method to the repository
-	// For now, we'll get all and filter (not optimal, but works)
 	links, err := tm.repo.GetTradeLinks()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get trade links: %w", err)
@@ -165,14 +149,7 @@ func (tm *TradeLinkManager) GetByID(id int) (*TradeLink, error) {
 
 	for _, l := range links {
 		if l.ID == id {
-			tl := NewTradeLink(
-				WithID(l.ID),
-				WithURL(l.URL),
-				WithDescription(l.Description),
-				WithSelected(l.Selected),
-				WithStatus("idle"),
-			)
-			return tl, nil
+			return &l, nil
 		}
 	}
 
@@ -193,13 +170,13 @@ func (tm *TradeLinkManager) Count() (int, error) {
 }
 
 // GetSelected returns only the selected trade links
-func (tm *TradeLinkManager) GetSelected() ([]TradeLink, error) {
+func (tm *TradeLinkManager) GetSelected() ([]domain.TradeLink, error) {
 	links, err := tm.List()
 	if err != nil {
 		return nil, err
 	}
 
-	var selected []TradeLink
+	var selected []domain.TradeLink
 	for _, link := range links {
 		if link.Selected {
 			selected = append(selected, link)

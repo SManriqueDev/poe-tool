@@ -65,19 +65,19 @@ interface WailsEvent<T = unknown> {
 
 // Reducer para manejar actualizaciones de estado de links de manera thread-safe
 type LinkAction =
-	| { type: 'UPDATE_STATUS'; linkID: number; status: string }
-	| { type: 'SET_LINKS'; links: TradeLink[] }
-	| { type: 'UPDATE_LINK'; link: TradeLink };
+	| { type: "UPDATE_STATUS"; linkID: number; status: string }
+	| { type: "SET_LINKS"; links: TradeLink[] }
+	| { type: "UPDATE_LINK"; link: TradeLink };
 
 const linkReducer = (state: TradeLink[], action: LinkAction): TradeLink[] => {
 	switch (action.type) {
-		case 'UPDATE_STATUS':
+		case "UPDATE_STATUS":
 			return state.map((l) =>
-				l.id === action.linkID ? { ...l, status: action.status } : l
+				l.id === action.linkID ? { ...l, status: action.status } : l,
 			);
-		case 'SET_LINKS':
+		case "SET_LINKS":
 			return action.links;
-		case 'UPDATE_LINK':
+		case "UPDATE_LINK":
 			return state.map((l) => (l.id === action.link.id ? action.link : l));
 		default:
 			return state;
@@ -176,13 +176,13 @@ export default function LiveSearch() {
 					};
 				});
 
-				dispatch({ type: 'SET_LINKS', links: linksWithStatus });
+				dispatch({ type: "SET_LINKS", links: linksWithStatus });
 			})
 			.catch((error) => {
 				console.error("Failed to load trade links or statuses:", error);
 				// Fallback to just loading links
 				listTradeLinks().then((links) => {
-					dispatch({ type: 'SET_LINKS', links });
+					dispatch({ type: "SET_LINKS", links });
 				});
 			});
 
@@ -206,10 +206,14 @@ export default function LiveSearch() {
 
 		const offStatusChanged = Events.On(
 			"linkStatusChanged",
-			(ev: WailsEvent<{linkID: number; status: string}>) => {
+			(ev: WailsEvent<{ linkID: number; status: string }>) => {
 				const data = ev.data[0] || ev.data;
 
-				dispatch({ type: 'UPDATE_STATUS', linkID: data.linkID, status: data.status });
+				dispatch({
+					type: "UPDATE_STATUS",
+					linkID: data.linkID,
+					status: data.status,
+				});
 			},
 		);
 
@@ -219,35 +223,32 @@ export default function LiveSearch() {
 				const data = ev.data[0] || ev.data;
 
 				// Show toast notification
-				toast(`Found ${data.items?.length || 0} new item${(data.items?.length || 0) > 1 ? "s" : ""}!`, {
-					description: `Search ID: ${data.searchId}`,
-					action: {
-						label: "View",
-						onClick: () => {
-							// Here you could open a modal or navigate to item details
-							console.log("View items clicked", data.items);
+				toast(
+					`Found ${data.items?.length || 0} new item${(data.items?.length || 0) > 1 ? "s" : ""}!`,
+					{
+						description: `Search ID: ${data.searchId}`,
+						action: {
+							label: "View",
+							onClick: () => {
+								// Here you could open a modal or navigate to item details
+								console.log("View items clicked", data.items);
+							},
 						},
 					},
-				});
+				);
 			},
 		);
 
-		const offLiveSearchStarted = Events.On(
-			"livesearch:started",
-			() => {
-        console.log("Live search started event received");
-				setIsLiveSearchRunning(true);
-				toast("Live search started!");
-			},
-		);
+		const offLiveSearchStarted = Events.On("livesearch:started", () => {
+			console.log("Live search started event received");
+			setIsLiveSearchRunning(true);
+			toast("Live search started!");
+		});
 
-		const offLiveSearchStopped = Events.On(
-			"livesearch:stopped",
-			() => {
-				setIsLiveSearchRunning(false);
-				toast("Live search stopped!");
-			},
-		);
+		const offLiveSearchStopped = Events.On("livesearch:stopped", () => {
+			setIsLiveSearchRunning(false);
+			toast("Live search stopped!");
+		});
 
 		return () => {
 			offStatusChanged();
@@ -270,13 +271,13 @@ export default function LiveSearch() {
 			...link,
 			status: statuses[link.id] || link.status || "idle",
 		}));
-		dispatch({ type: 'SET_LINKS', links: linksWithStatus });
+		dispatch({ type: "SET_LINKS", links: linksWithStatus });
 		toast("Link added!");
 	};
 
 	const handleDelete = async (idx: number) => {
 		const updated = links.filter((_, i) => i !== idx);
-		dispatch({ type: 'SET_LINKS', links: updated });
+		dispatch({ type: "SET_LINKS", links: updated });
 		await deleteTradeLink(links[idx].id);
 		toast("Link deleted!");
 	};
@@ -301,7 +302,7 @@ export default function LiveSearch() {
 			...link,
 			status: statuses[link.id] || link.status || "idle",
 		}));
-		dispatch({ type: 'SET_LINKS', links: linksWithStatus });
+		dispatch({ type: "SET_LINKS", links: linksWithStatus });
 		setEditIdx(null);
 		toast("Link updated!");
 	};
@@ -329,7 +330,7 @@ export default function LiveSearch() {
 		const link = links[idx];
 		await updateTradeLink(link.id, { ...link, selected } as TradeLink);
 		const updatedLinks = await listTradeLinks();
-		dispatch({ type: 'SET_LINKS', links: updatedLinks });
+		dispatch({ type: "SET_LINKS", links: updatedLinks });
 	};
 
 	const handleGoToHideoutChange = async (checked: boolean) => {

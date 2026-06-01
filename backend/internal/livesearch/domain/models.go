@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"net/url"
 	"strings"
 	"time"
@@ -14,8 +15,21 @@ type TradeLink struct {
 	Selected    bool      `json:"selected"`
 	Status      string    `json:"status"` // e.g., "connected", "auth-error", "error"
 	League      string    `json:"league"`
-	SearchID    string    `json:"search_id"`
+	SearchID    string    `json:"searchId"`
 	CreatedAt   time.Time `json:"created_at"`
+}
+
+func (t *TradeLink) MarshalJSON() ([]byte, error) {
+	type Alias TradeLink
+	return json.Marshal(&struct {
+		Alias
+		League   string `json:"league"`
+		SearchID string `json:"searchId"`
+	}{
+		Alias:    (Alias)(*t),
+		League:   t.League,
+		SearchID: t.SearchID,
+	})
 }
 
 func (t *TradeLink) ComputeDerivedFields() {

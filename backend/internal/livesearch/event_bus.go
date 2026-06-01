@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 
+	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type EventBus interface {
-	EmitStatusUpdate(ctx context.Context, link TradeLink)
+	EmitStatusUpdate(ctx context.Context, link domain.TradeLink)
 	EmitNewItems(ctx context.Context, searchID string, items []ItemResult) error
 	EmitNewLog(ctx context.Context, logEntry interface{})
 	EmitLinkStatusChanged(ctx context.Context, linkID int, status string) error
@@ -19,7 +20,7 @@ type EventBus interface {
 type WailsEventBus struct {
 }
 
-func (b *WailsEventBus) EmitStatusUpdate(ctx context.Context, link TradeLink) {
+func (b *WailsEventBus) EmitStatusUpdate(ctx context.Context, link domain.TradeLink) {
 	app := application.Get()
 	if app != nil {
 		app.Event.Emit("linkStatusChanged", link)

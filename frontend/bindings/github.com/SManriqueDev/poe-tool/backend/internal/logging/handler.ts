@@ -73,7 +73,7 @@ export function GetLogModules(): $CancellablePromise<string[]> {
 /**
  * GetLogStats returns statistics about log entries
  */
-export function GetLogStats(): $CancellablePromise<{ [_: string]: any }> {
+export function GetLogStats(): $CancellablePromise<{ [_ in string]?: any }> {
     return $Call.ByID(2363908826).then(($result: any) => {
         return $$createType4($result);
     });
