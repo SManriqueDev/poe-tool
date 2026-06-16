@@ -13,6 +13,7 @@ type LiveSearchApplicationService struct {
 	liveSearchRepo  domain.LiveSearchRepository
 	webSocketClient domain.WebSocketClient
 	eventBus        domain.EventBus
+	hideoutAutomation domain.HideoutAutomation
 	logger          domain.Logger
 
 	// State management
@@ -32,6 +33,7 @@ func NewLiveSearchApplicationService(
 	wsClient domain.WebSocketClient,
 	eventBus domain.EventBus,
 	logger domain.Logger,
+	hideoutAutomation domain.HideoutAutomation,
 ) *LiveSearchApplicationService {
 	return &LiveSearchApplicationService{
 		tradeLinkRepo:   tradeLinkRepo,
@@ -39,6 +41,7 @@ func NewLiveSearchApplicationService(
 		webSocketClient: wsClient,
 		eventBus:        eventBus,
 		logger:          logger,
+		hideoutAutomation: hideoutAutomation,
 		state:           domain.LiveSearchStopped,
 		linkStatuses:    make(map[int]string),
 	}
@@ -200,11 +203,34 @@ func (s *LiveSearchApplicationService) processTradeLink(ctx context.Context, lin
 		return
 	}
 
-	// Suscribirse al search ID
-	if err := s.webSocketClient.Subscribe(ctx, searchID); err != nil {
+	// Determinar la liga: primero intentar desde el TradeLink, luego fallback a settings
+	league := link.League
+	if league == "" {
+		if setting, err := s.liveSearchRepo.GetSetting(ctx, "league"); err == nil && setting != nil {
+			if leagueStr, ok := setting.(string); ok && leagueStr != "" {
+				league = leagueStr
+				s.logger.Info("livesearch", "Using league from settings", map[string]interface{}{
+					"link_id": link.ID,
+					"league":  league,
+				})
+			}
+		}
+	}
+
+	if league == "" {
+		s.logger.Error("livesearch", "No league available for subscription", map[string]interface{}{
+			"link_id": link.ID,
+		})
+		s.SetLinkStatus(link.ID, "error")
+		return
+	}
+
+	// Suscribirse al search ID con la liga determinada
+	if err := s.webSocketClient.Subscribe(ctx, searchID, league); err != nil {
 		s.logger.Error("livesearch", "Failed to subscribe to search", map[string]interface{}{
 			"link_id":   link.ID,
 			"search_id": searchID,
+			"league":    league,
 			"error":     err.Error(),
 		})
 		s.SetLinkStatus(link.ID, "error")
@@ -217,6 +243,7 @@ func (s *LiveSearchApplicationService) processTradeLink(ctx context.Context, lin
 	s.logger.Info("livesearch", "Trade link monitoring started", map[string]interface{}{
 		"link_id":   link.ID,
 		"search_id": searchID,
+		"league":    league,
 	})
 }
 
@@ -247,12 +274,39 @@ func (s *LiveSearchApplicationService) monitorLiveSearch(ctx context.Context, tr
 // handleNewItem procesa un nuevo item encontrado
 func (s *LiveSearchApplicationService) handleNewItem(ctx context.Context, item domain.ItemResult) {
 	s.logger.Info("livesearch", "New item found", map[string]interface{}{
-		"item_id": item.ID,
+		"item_id":   item.ID,
+		"search_id": item.SearchID,
 	})
 
-	// Emitir evento de nuevo item (por ahora con slice de un item)
+	// Extract hideout_token from listing and queue hideout visit if available
+	if listingMap, ok := item.Listing.(map[string]interface{}); ok {
+		if hideoutToken, ok := listingMap["hideout_token"].(string); ok && hideoutToken != "" {
+			// Skip if a hideout visit is already in progress or queued
+			isProcessing, _ := s.hideoutAutomation.IsProcessing(ctx)
+			queueSize, _ := s.hideoutAutomation.GetQueueSize(ctx)
+			if isProcessing || queueSize > 0 {
+				s.logger.Info("livesearch", "Skipping hideout - another visit in progress", map[string]interface{}{
+					"item_id":    item.ID,
+					"processing": isProcessing,
+					"queue_size": queueSize,
+				})
+			} else {
+				s.logger.Info("livesearch", "Hideout token found, queuing visit", map[string]interface{}{
+					"item_id": item.ID,
+				})
+				if err := s.hideoutAutomation.QueueHideoutVisit(ctx, hideoutToken, item.ID); err != nil {
+					s.logger.Error("livesearch", "Failed to queue hideout visit", map[string]interface{}{
+						"item_id": item.ID,
+						"error":   err.Error(),
+					})
+				}
+			}
+		}
+	}
+
+	// Emitir evento de nuevo item
 	items := []domain.ItemResult{item}
-	if err := s.eventBus.EmitNewItems(ctx, "live-search", items); err != nil {
+	if err := s.eventBus.EmitNewItems(ctx, item.SearchID, items); err != nil {
 		s.logger.Error("livesearch", "Failed to emit new items", map[string]interface{}{
 			"error": err.Error(),
 		})

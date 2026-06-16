@@ -57,9 +57,10 @@ func (a *WebSocketClientAdapter) Disconnect(ctx context.Context) error {
 }
 
 // Subscribe delega al servicio legacy que maneja todas las suscripciones
-func (a *WebSocketClientAdapter) Subscribe(ctx context.Context, searchID string) error {
+func (a *WebSocketClientAdapter) Subscribe(ctx context.Context, searchID, league string) error {
 	// El servicio legacy maneja todas las suscripciones automáticamente
 	// Este método es parte del contrato pero no se usa individualmente
+	_ = league
 	return nil
 }
 

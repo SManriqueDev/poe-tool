@@ -30,6 +30,7 @@ type DomainHideoutAutomation struct {
 	stopChan  chan struct{}
 	doneChan  chan struct{}
 	controlMu sync.Mutex
+	running   bool
 
 	// Dependencies
 	systemAPIClient domain.SystemAPIClient
@@ -171,20 +172,16 @@ func (h *DomainHideoutAutomation) StartProcessingQueue(ctx context.Context) erro
 	h.controlMu.Lock()
 	defer h.controlMu.Unlock()
 
-	// Check if already running
-	select {
-	case <-h.doneChan:
-		// Channel is closed, create new ones
-		h.stopChan = make(chan struct{})
-		h.doneChan = make(chan struct{})
-	default:
-		// Already running
+	if h.running {
 		return fmt.Errorf("queue processing is already running")
 	}
 
+	h.running = true
+	h.stopChan = make(chan struct{})
+	h.doneChan = make(chan struct{})
+
 	h.logger.Info("hideout_automation", "Starting hideout queue processing", nil)
 
-	// Start processing goroutine
 	go h.processQueueWorker(ctx)
 
 	return nil
@@ -195,14 +192,13 @@ func (h *DomainHideoutAutomation) StopProcessingQueue(ctx context.Context) error
 	h.controlMu.Lock()
 	defer h.controlMu.Unlock()
 
-	select {
-	case <-h.doneChan:
-		// Already stopped
+	if !h.running {
 		return nil
-	default:
-		close(h.stopChan)
-		<-h.doneChan // Wait for goroutine to finish
 	}
+
+	close(h.stopChan)
+	<-h.doneChan
+	h.running = false
 
 	h.logger.Info("hideout_automation", "Hideout queue processing stopped", nil)
 	return nil

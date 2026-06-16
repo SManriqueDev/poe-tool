@@ -408,6 +408,8 @@ func (s *Service) StartLiveSearch() []domain.TradeLink {
 		go func() {
 			defer workerWg.Done()
 			for msg := range msgCh {
+				log.Printf("[Legacy-WS] Raw message for search %s: %s", msg.SearchID, string(msg.Message))
+
 				// Parse the WebSocket message
 				var liveMsg LiveSearchMessage
 				if err := json.Unmarshal(msg.Message, &liveMsg); err != nil {

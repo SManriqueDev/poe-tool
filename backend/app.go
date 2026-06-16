@@ -57,6 +57,7 @@ func NewApp() *App {
 		domainWebSocketClient,
 		domainEventBus,
 		loggerAdapter,
+		domainHideoutAutomation,
 	)
 
 	return &App{
@@ -75,6 +76,8 @@ func NewApp() *App {
 }
 
 func (a *App) Startup() {
+	ctx := context.Background()
+	a.hideoutAutomation.StartProcessingQueue(ctx)
 }
 
 func (a *App) SetAppInstance(app *application.App) {

@@ -2,10 +2,15 @@ package adapters
 
 import (
 	"context"
+	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,6 +22,9 @@ import (
 // DomainWebSocketClient implementa domain.WebSocketClient de forma pura
 type DomainWebSocketClient struct {
 	logger domain.Logger
+
+	// HTTP client for fetching item details
+	httpClient *http.Client
 
 	// Conexiones WebSocket
 	connections map[string]*websocket.Conn
@@ -46,12 +54,18 @@ type DomainWebSocketClient struct {
 func NewDomainWebSocketClient(logger domain.Logger) *DomainWebSocketClient {
 	return &DomainWebSocketClient{
 		logger:         logger,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+			},
+		},
 		connections:    make(map[string]*websocket.Conn),
 		messageChannel: make(chan domain.ItemResult, 100), // Buffer de 100 mensajes
 		maxRetries:     3,
 		retryDelay:     5 * time.Second,
 		pingInterval:   30 * time.Second,
-		readTimeout:    60 * time.Second,
+		readTimeout:    300 * time.Second,
 		writeTimeout:   10 * time.Second,
 	}
 }
@@ -163,9 +177,8 @@ func (c *DomainWebSocketClient) connectToSearchID(ctx context.Context, searchID,
 		"search_id": searchID,
 	})
 
-	// Iniciar goroutines para manejo de mensajes
+	// Iniciar goroutine para manejo de mensajes (sin ping - PoE rechaza control frames)
 	go c.handleMessages(ctx, conn, wsURLStr)
-	go c.pingHandler(ctx, conn, wsURLStr)
 
 	return nil
 }
@@ -209,13 +222,11 @@ func (c *DomainWebSocketClient) Disconnect(ctx context.Context) error {
 }
 
 // Subscribe se suscribe a actualizaciones de un search ID específico
-func (c *DomainWebSocketClient) Subscribe(ctx context.Context, searchID string) error {
+func (c *DomainWebSocketClient) Subscribe(ctx context.Context, searchID, league string) error {
 	c.logger.Info("websocket", "Subscribing to search updates", map[string]interface{}{
 		"search_id": searchID,
+		"league":    league,
 	})
-
-	// Usar la liga exacta como en el servicio legacy
-	league := "Rise of the Abyssal" // Sin URL encoding
 
 	// Conectar específicamente para este search ID
 	if err := c.connectToSearchID(ctx, searchID, league); err != nil {
@@ -324,48 +335,161 @@ func (c *DomainWebSocketClient) handleMessages(ctx context.Context, conn *websoc
 				continue
 			}
 
-			c.processMessage(message)
+			log.Printf("[WS] Raw message received from %s: %s", wsURL, string(messageBytes))
+
+			c.processMessage(ctx, message)
 		}
 	}
 }
 
-// processMessage procesa un mensaje del WebSocket según el formato de la API de PoE
-func (c *DomainWebSocketClient) processMessage(message map[string]interface{}) {
-	// La API de PoE envía mensajes con un array "new" que contiene IDs de nuevos items
-	if newItems, ok := message["new"].([]interface{}); ok && len(newItems) > 0 {
-		c.logger.Info("websocket", "Received new items", map[string]interface{}{
-			"count": len(newItems),
+// processMessage procesa un mensaje del WebSocket según el formato de la API de PoE 2
+func (c *DomainWebSocketClient) processMessage(ctx context.Context, message map[string]interface{}) {
+	// PoE 2 format: {"result": "<JWT>", "count": N}
+	resultJWT, ok := message["result"].(string)
+	if !ok || resultJWT == "" {
+		log.Printf("[WS] Unexpected message format (no 'result' field): %v", message)
+		return
+	}
+
+	log.Printf("[WS] PoE2 live result received, count=%v, jwt_length=%d", message["count"], len(resultJWT))
+
+	c.logger.Info("websocket", "Received PoE 2 live search result", map[string]interface{}{
+		"result_length": len(resultJWT),
+	})
+
+	// Extract iss from JWT payload (search ID)
+	parts := strings.Split(resultJWT, ".")
+	if len(parts) < 2 {
+		c.logger.Error("websocket", "Invalid JWT format", map[string]interface{}{
+			"parts_count": len(parts),
 		})
+		return
+	}
 
-		for _, itemInterface := range newItems {
-			if itemID, ok := itemInterface.(string); ok {
-				// Crear ItemResult básico para cada nuevo item
-				itemResult := &domain.ItemResult{
-					ID:       itemID,
-					SearchID: "", // Se puede extraer del contexto si es necesario
-					Item:     nil,
-					Listing:  nil,
-				}
+	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		c.logger.Error("websocket", "Failed to decode JWT payload", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
 
-				// Enviar al canal si está abierto
-				c.channelMu.RLock()
-				if !c.channelClosed {
-					select {
-					case c.messageChannel <- *itemResult:
-						c.logger.Info("websocket", "New item sent to channel", map[string]interface{}{
-							"item_id": itemID,
-						})
-					default:
-						// Canal lleno, loggear warning
-						c.logger.Warning("websocket", "Message channel full, dropping item", map[string]interface{}{
-							"item_id": itemID,
-						})
-					}
-				}
-				c.channelMu.RUnlock()
-			}
+	var jwtPayload struct {
+		Iss string `json:"iss"`
+		Exp int64  `json:"exp"`
+	}
+	if err := json.Unmarshal(payloadBytes, &jwtPayload); err != nil {
+		c.logger.Error("websocket", "Failed to parse JWT payload", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.logger.Info("websocket", "Extracted search ID from JWT", map[string]interface{}{
+		"search_id": jwtPayload.Iss,
+	})
+
+	// Fetch item details from PoE API
+	items, err := c.fetchTradeItems(ctx, resultJWT, jwtPayload.Iss)
+	if err != nil {
+		c.logger.Error("websocket", "Failed to fetch trade items", map[string]interface{}{
+			"search_id": jwtPayload.Iss,
+			"error":     err.Error(),
+		})
+		return
+	}
+
+	c.logger.Info("websocket", "Fetched trade items", map[string]interface{}{
+		"count":       len(items),
+		"search_id":   jwtPayload.Iss,
+	})
+
+	// Send items to channel
+	c.channelMu.RLock()
+	defer c.channelMu.RUnlock()
+
+	if c.channelClosed {
+		return
+	}
+
+	for _, item := range items {
+		select {
+		case c.messageChannel <- item:
+			c.logger.Info("websocket", "Item sent to channel", map[string]interface{}{
+				"item_id":   item.ID,
+				"search_id": item.SearchID,
+			})
+		default:
+			c.logger.Warning("websocket", "Message channel full, dropping item", map[string]interface{}{
+				"item_id": item.ID,
+			})
 		}
 	}
+}
+
+// fetchTradeItems fetches item details from PoE 2 trade API
+func (c *DomainWebSocketClient) fetchTradeItems(ctx context.Context, resultJWT, searchID string) ([]domain.ItemResult, error) {
+	fetchURL := fmt.Sprintf("https://www.pathofexile.com/api/trade2/fetch/%s?query=%s&realm=poe2",
+		resultJWT,
+		url.QueryEscape(searchID),
+	)
+
+	log.Printf("[WS] fetchTradeItems: GET %s", fetchURL)
+	c.logger.Info("websocket", "Fetching trade items", map[string]interface{}{
+		"search_id": searchID,
+	})
+
+	req, err := http.NewRequestWithContext(ctx, "GET", fetchURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if c.poeSessID != "" {
+		req.Header.Set("Cookie", "POESESSID="+c.poeSessID)
+	}
+	req.Header.Set("User-Agent", uarand.GetRandom())
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Origin", "https://www.pathofexile.com")
+
+	start := time.Now()
+	resp, err := c.httpClient.Do(req)
+	elapsed := time.Since(start)
+	if err != nil {
+		log.Printf("[WS] fetchTradeItems: failed after %v: %v", elapsed, err)
+		return nil, fmt.Errorf("failed to fetch items: %w", err)
+	}
+	defer resp.Body.Close()
+
+	log.Printf("[WS] fetchTradeItems: HTTP %d after %v for search_id=%s", resp.StatusCode, elapsed, searchID)
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		log.Printf("[WS] fetchTradeItems: authentication failed (401) for search_id=%s", searchID)
+		return nil, fmt.Errorf("authentication failed - check POESESSID")
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("[WS] fetchTradeItems: HTTP %d for search_id=%s, body=%s", resp.StatusCode, searchID, string(body))
+		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var fetchResp struct {
+		Result []domain.ItemResult `json:"result"`
+	}
+	if err := json.Unmarshal(body, &fetchResp); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	// Attach search ID to each item
+	for i := range fetchResp.Result {
+		fetchResp.Result[i].SearchID = searchID
+	}
+
+	return fetchResp.Result, nil
 }
 
 // pingHandler envía pings periódicos para mantener la conexión viva

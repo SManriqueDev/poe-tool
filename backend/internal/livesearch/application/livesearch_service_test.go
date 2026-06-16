@@ -103,7 +103,7 @@ func (m *mockWebSocketClient) Disconnect(ctx context.Context) error {
 	return nil
 }
 
-func (m *mockWebSocketClient) Subscribe(ctx context.Context, searchID string) error {
+func (m *mockWebSocketClient) Subscribe(ctx context.Context, searchID, league string) error {
 	return nil
 }
 
@@ -158,6 +158,20 @@ func (m *mockLogger) Warning(module, message string, metadata map[string]interfa
 }
 func (m *mockLogger) Debug(module, message string, metadata map[string]interface{}) error { return nil }
 
+type mockHideoutAutomation struct{}
+
+func (m *mockHideoutAutomation) ProcessHideoutVisit(ctx context.Context, hideoutToken, itemID string) error {
+	return nil
+}
+func (m *mockHideoutAutomation) QueueHideoutVisit(ctx context.Context, hideoutToken, itemID string) error {
+	return nil
+}
+func (m *mockHideoutAutomation) GetQueueSize(ctx context.Context) (int, error)                     { return 0, nil }
+func (m *mockHideoutAutomation) IsProcessing(ctx context.Context) (bool, error)                      { return false, nil }
+func (m *mockHideoutAutomation) StartProcessingQueue(ctx context.Context) error                      { return nil }
+func (m *mockHideoutAutomation) StopProcessingQueue(ctx context.Context) error                       { return nil }
+func (m *mockHideoutAutomation) ClearQueue(ctx context.Context) error                                { return nil }
+
 // Test functions
 
 func TestLiveSearchApplicationService_StartLiveSearch(t *testing.T) {
@@ -181,6 +195,7 @@ func TestLiveSearchApplicationService_StartLiveSearch(t *testing.T) {
 		wsClient,
 		eventBus,
 		logger,
+		&mockHideoutAutomation{},
 	)
 
 	// Test
@@ -220,6 +235,7 @@ func TestLiveSearchApplicationService_StopLiveSearch(t *testing.T) {
 		&mockWebSocketClient{},
 		&mockEventBus{},
 		&mockLogger{},
+		&mockHideoutAutomation{},
 	)
 
 	// Start first
@@ -247,6 +263,7 @@ func TestLiveSearchApplicationService_GetAllLinkStatuses(t *testing.T) {
 		&mockWebSocketClient{},
 		&mockEventBus{},
 		&mockLogger{},
+		&mockHideoutAutomation{},
 	)
 
 	// Test initial state
@@ -289,6 +306,7 @@ func TestLiveSearchApplicationService_NoActiveLinks(t *testing.T) {
 		&mockWebSocketClient{},
 		&mockEventBus{},
 		&mockLogger{},
+		&mockHideoutAutomation{},
 	)
 
 	// Test
@@ -318,6 +336,7 @@ func TestLiveSearchApplicationService_ConcurrentAccess(t *testing.T) {
 		&mockWebSocketClient{},
 		&mockEventBus{},
 		&mockLogger{},
+		&mockHideoutAutomation{},
 	)
 
 	// Test concurrent access to status methods

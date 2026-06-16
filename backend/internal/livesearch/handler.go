@@ -79,6 +79,14 @@ func (h *Handler) StartLiveSearch() []domain.TradeLink {
 		})
 	}
 
+	// Merge in-memory statuses into returned trade links
+	statuses := h.liveSearchAppSvc.GetAllLinkStatuses()
+	for i := range domainLinks {
+		if status, ok := statuses[domainLinks[i].ID]; ok && status != "" {
+			domainLinks[i].Status = status
+		}
+	}
+
 	return domainLinks
 }
 

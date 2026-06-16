@@ -21,11 +21,21 @@ func NewDomainLiveSearchRepository() *DomainLiveSearchRepository {
 
 // GetSetting obtiene una configuración por clave
 func (r *DomainLiveSearchRepository) GetSetting(ctx context.Context, key string) (interface{}, error) {
+	// 1. Intentar live_search_settings (booleanos: go_to_hideout)
 	query := `SELECT enabled FROM live_search_settings WHERE name = ? LIMIT 1`
 	row := r.db.QueryRowContext(ctx, query, key)
 
 	var enabledInt int
 	err := row.Scan(&enabledInt)
+	if err == nil {
+		return enabledInt == 1, nil
+	}
+
+	// 2. Fallback: tabla settings (strings: poesessid, league, etc.)
+	query = `SELECT value FROM settings WHERE key = ? LIMIT 1`
+	row = r.db.QueryRowContext(ctx, query, key)
+	var value string
+	err = row.Scan(&value)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, domain.ErrSettingNotFound
@@ -33,8 +43,7 @@ func (r *DomainLiveSearchRepository) GetSetting(ctx context.Context, key string)
 		return nil, err
 	}
 
-	// Convertir int a bool para settings tipo go_to_hideout
-	return enabledInt == 1, nil
+	return value, nil
 }
 
 // SetSetting establece una configuración

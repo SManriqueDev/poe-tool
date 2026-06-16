@@ -38,7 +38,7 @@ type LiveSearchRepository interface {
 type WebSocketClient interface {
 	Connect(ctx context.Context, url string) error
 	Disconnect(ctx context.Context) error
-	Subscribe(ctx context.Context, searchID string) error
+	Subscribe(ctx context.Context, searchID, league string) error
 	Unsubscribe(ctx context.Context, searchID string) error
 	IsConnected() bool
 	GetMessageChannel() <-chan ItemResult

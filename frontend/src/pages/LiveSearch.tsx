@@ -3,7 +3,6 @@ import { useEffect, useId, useReducer, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -15,15 +14,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
 import { getColumns } from "@/live-search/columns";
 import { DataTable } from "@/live-search/data-table";
 import {
@@ -40,12 +30,6 @@ import {
 	type TradeLink,
 	updateTradeLink,
 } from "@/services/liveSearchService";
-import {
-	formatTimestamp,
-	getLogEntries,
-	type LogEntry,
-	parseMetadata,
-} from "@/services/loggingService";
 
 // Type definitions for the application
 interface ItemResult {
@@ -105,36 +89,6 @@ export default function LiveSearch() {
 	const [isLiveSearchRunning, setIsLiveSearchRunning] = useState(false);
 	const [goToHideoutEnabled, setGoToHideoutEnabled] = useState(false);
 
-	// Log viewer state
-	const [showLogs, setShowLogs] = useState(false);
-	const [logs, setLogs] = useState<LogEntry[]>([]);
-	const [logsLoading, setLogsLoading] = useState(false);
-
-	// Load LiveSearch-specific logs
-	const loadLiveSearchLogs = async () => {
-		try {
-			setLogsLoading(true);
-			const liveSearchLogs = await getLogEntries({
-				module: "livesearch",
-				limit: 100,
-			});
-			setLogs(liveSearchLogs);
-		} catch (error) {
-			console.error("Failed to load LiveSearch logs:", error);
-			toast.error("Failed to load logs");
-		} finally {
-			setLogsLoading(false);
-		}
-	};
-
-	// Toggle log viewer
-	const toggleLogs = async () => {
-		if (!showLogs) {
-			await loadLiveSearchLogs();
-		}
-		setShowLogs(!showLogs);
-	};
-
 	// Open logs in new window
 	const handleOpenLogsWindow = async () => {
 		try {
@@ -142,24 +96,6 @@ export default function LiveSearch() {
 		} catch (error) {
 			console.error("Failed to open logs window:", error);
 			toast.error("Failed to open logs window");
-		}
-	};
-
-	// Get badge color for log levels (consistent with LiveSearchLogsWindow)
-	const getLevelColor = (level: string) => {
-		switch (level.toLowerCase()) {
-			case "error":
-				return "destructive";
-			case "warn":
-			case "warning":
-			case "info":
-				return "secondary";
-			case "debug":
-				return "outline";
-			case "success":
-				return "default";
-			default:
-				return "outline";
 		}
 	};
 
@@ -350,27 +286,9 @@ export default function LiveSearch() {
 				<CardHeader>
 					<div className="flex justify-between items-center">
 						<CardTitle>Live Search</CardTitle>
-						<div className="flex gap-2">
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={toggleLogs}
-								disabled={logsLoading}
-							>
-								{logsLoading
-									? "Loading..."
-									: showLogs
-										? "Hide Logs"
-										: "View Logs"}
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={handleOpenLogsWindow}
-							>
-								Open Logs Window
-							</Button>
-						</div>
+						<Button variant="outline" size="sm" onClick={handleOpenLogsWindow}>
+							Open Logs Window
+						</Button>
 					</div>
 				</CardHeader>
 				<CardContent>
@@ -438,96 +356,6 @@ export default function LiveSearch() {
 					)}
 				</CardFooter>
 			</Card>
-
-			{/* LiveSearch Logs Viewer */}
-			{showLogs && (
-				<Card>
-					<CardHeader>
-						<div className="flex justify-between items-center">
-							<CardTitle className="text-lg">LiveSearch Logs</CardTitle>
-							<Badge variant="secondary">{logs.length} entries</Badge>
-						</div>
-					</CardHeader>
-					<CardContent>
-						{logsLoading ? (
-							<div className="text-center py-8">Loading logs...</div>
-						) : logs.length === 0 ? (
-							<div className="text-center py-8 text-muted-foreground">
-								No LiveSearch logs found
-							</div>
-						) : (
-							<div className="space-y-4">
-								<div className="text-sm text-muted-foreground mb-4">
-									Showing recent LiveSearch activity and events
-								</div>
-								<div className="max-h-96 overflow-y-auto">
-									<Table>
-										<TableHeader>
-											<TableRow>
-												<TableHead className="w-[140px]">Time</TableHead>
-												<TableHead className="w-[80px]">Level</TableHead>
-												<TableHead>Message</TableHead>
-											</TableRow>
-										</TableHeader>
-										<TableBody>
-											{logs.map((log) => (
-												<TableRow key={log.id}>
-													<TableCell className="font-mono text-xs">
-														{formatTimestamp(log.timestamp)}
-													</TableCell>
-													<TableCell>
-														<Badge
-															variant={getLevelColor(log.level)}
-															className="w-20 text-xs font-medium justify-center"
-														>
-															{log.level}
-														</Badge>
-													</TableCell>
-													<TableCell>
-														<div className="space-y-1">
-															<div className="text-sm">{log.message}</div>
-															{log.metadata && parseMetadata(log.metadata) && (
-																<div className="text-xs text-muted-foreground">
-																	{(() => {
-																		const metadata = parseMetadata(
-																			log.metadata,
-																		);
-																		if (metadata?.item_name) {
-																			return `Item: ${metadata.item_name}`;
-																		}
-																		if (metadata?.search_id) {
-																			return `Search ID: ${metadata.search_id}`;
-																		}
-																		if (metadata?.url) {
-																			return `URL: ${metadata.url}`;
-																		}
-																		return null;
-																	})()}
-																</div>
-															)}
-														</div>
-													</TableCell>
-												</TableRow>
-											))}
-										</TableBody>
-									</Table>
-								</div>
-								<Separator />
-								<div className="flex justify-between items-center text-sm text-muted-foreground">
-									<span>Last updated: {new Date().toLocaleTimeString()}</span>
-									<Button
-										variant="ghost"
-										size="sm"
-										onClick={loadLiveSearchLogs}
-									>
-										Refresh
-									</Button>
-								</div>
-							</div>
-						)}
-					</CardContent>
-				</Card>
-			)}
 		</div>
 	);
 }
