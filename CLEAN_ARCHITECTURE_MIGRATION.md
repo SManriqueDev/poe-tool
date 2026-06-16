@@ -86,11 +86,11 @@ Bridges domain contracts with existing infrastructure during migration.
    - Maintains error handling compatibility
    - **Purpose**: Preserves logging functionality during transition
 
-3. **WebSocketClientAdapter** ✅
-   - Implements `domain.WebSocketClient`
-   - Delegates to existing `livesearch.WebSocketClient`
-   - Simplifies interface for application layer
-   - **Purpose**: Abstracts complex WebSocket management
+3. **WebSocketClientAdapter** 🔄 *(replaced)*
+   - Was a temporary bridge wrapper — **removed** in favor of direct `DomainWebSocketClient`
+   - `DomainWebSocketClient` (in `adapters/domain_websocket_client.go`) now implements `domain.WebSocketClient` **directly** — no delegation to legacy code
+   - All 7 interface methods are self-contained: `Connect`, `Disconnect`, `Subscribe`, `Unsubscribe`, `IsConnected`, `GetMessageChannel`, `SetPOESESSID`
+   - **Wiring**: `app.go:39` creates via `DomainComponentsFactory.CreateWebSocketClient()` and injects directly into `LiveSearchApplicationService`
 
 4. **EventBusAdapter** ✅
    - Implements `domain.EventBus`
