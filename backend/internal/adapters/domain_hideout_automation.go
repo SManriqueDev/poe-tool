@@ -42,16 +42,17 @@ func NewDomainHideoutAutomation(
 	logger domain.Logger,
 	systemAPIClient domain.SystemAPIClient,
 	settingsRepo domain.LiveSearchRepository,
+	config HideoutAutomationConfig,
 ) *DomainHideoutAutomation {
 	return &DomainHideoutAutomation{
 		logger:          logger,
 		systemAPIClient: systemAPIClient,
 		settingsRepo:    settingsRepo,
 		queue:           make([]domain.HideoutQueueItem, 0),
-		maxRetries:      3,
-		retryDelay:      2 * time.Second,
-		processDelay:    8 * time.Second, // Realistic trading time between hideout visits
-		maxQueueSize:    50,              // Prevent memory issues with large queues
+		maxRetries:      config.MaxRetries,
+		retryDelay:      config.RetryDelay,
+		processDelay:    config.ProcessDelay,
+		maxQueueSize:    config.MaxQueueSize,
 		stopChan:        make(chan struct{}),
 		doneChan:        make(chan struct{}),
 	}
@@ -387,21 +388,6 @@ func (h *DomainHideoutAutomation) GetQueueSnapshot() []domain.HideoutQueueItem {
 	snapshot := make([]domain.HideoutQueueItem, len(h.queue))
 	copy(snapshot, h.queue)
 	return snapshot
-}
-
-// SetConfiguration actualiza la configuración del sistema
-func (h *DomainHideoutAutomation) SetConfiguration(maxRetries int, retryDelay, processDelay time.Duration, maxQueueSize int) {
-	h.maxRetries = maxRetries
-	h.retryDelay = retryDelay
-	h.processDelay = processDelay
-	h.maxQueueSize = maxQueueSize
-
-	h.logger.Info("hideout_automation", "Configuration updated", map[string]interface{}{
-		"max_retries":    maxRetries,
-		"retry_delay":    retryDelay,
-		"process_delay":  processDelay,
-		"max_queue_size": maxQueueSize,
-	})
 }
 
 // Helper function for min

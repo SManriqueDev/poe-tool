@@ -51,22 +51,22 @@ type DomainWebSocketClient struct {
 }
 
 // NewDomainWebSocketClient crea una nueva instancia del cliente WebSocket
-func NewDomainWebSocketClient(logger domain.Logger) *DomainWebSocketClient {
+func NewDomainWebSocketClient(logger domain.Logger, config WebSocketConfig) *DomainWebSocketClient {
 	return &DomainWebSocketClient{
 		logger:         logger,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: config.ReadTimeout,
 			Transport: &http.Transport{
 				TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
 			},
 		},
 		connections:    make(map[string]*websocket.Conn),
 		messageChannel: make(chan domain.ItemResult, 100), // Buffer de 100 mensajes
-		maxRetries:     3,
-		retryDelay:     5 * time.Second,
-		pingInterval:   30 * time.Second,
-		readTimeout:    300 * time.Second,
-		writeTimeout:   10 * time.Second,
+		maxRetries:     config.MaxRetries,
+		retryDelay:     config.RetryDelay,
+		pingInterval:   config.PingInterval,
+		readTimeout:    config.ReadTimeout,
+		writeTimeout:   config.WriteTimeout,
 	}
 }
 

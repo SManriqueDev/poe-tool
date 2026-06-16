@@ -27,12 +27,12 @@ type DomainWindowManager struct {
 }
 
 // NewDomainWindowManager crea una nueva instancia del window manager
-func NewDomainWindowManager(logger domain.Logger) *DomainWindowManager {
+func NewDomainWindowManager(logger domain.Logger, config WindowManagerConfig) *DomainWindowManager {
 	return &DomainWindowManager{
 		logger:        logger,
 		activeWindows: make(map[string]*application.WebviewWindow),
-		defaultWidth:  800,
-		defaultHeight: 600,
+		defaultWidth:  config.DefaultWidth,
+		defaultHeight: config.DefaultHeight,
 	}
 }
 
@@ -239,13 +239,4 @@ func (wm *DomainWindowManager) GetWindowCount() int {
 	return len(wm.activeWindows)
 }
 
-// Configuration methods
-func (wm *DomainWindowManager) SetDefaultSize(width, height int) {
-	wm.defaultWidth = width
-	wm.defaultHeight = height
 
-	wm.logger.Info("window_manager", "Default window size updated", map[string]interface{}{
-		"width":  width,
-		"height": height,
-	})
-}

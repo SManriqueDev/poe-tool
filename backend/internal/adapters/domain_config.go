@@ -172,14 +172,7 @@ func (f *DomainComponentsFactory) CreateEventBus() domain.EventBus {
 
 // CreateWebSocketClient crea un cliente WebSocket configurado
 func (f *DomainComponentsFactory) CreateWebSocketClient() domain.WebSocketClient {
-	client := NewDomainWebSocketClient(f.logger)
-
-	// Aplicar configuración específica
-	client.maxRetries = f.config.WebSocket.MaxRetries
-	client.retryDelay = f.config.WebSocket.RetryDelay
-	client.pingInterval = f.config.WebSocket.PingInterval
-	client.readTimeout = f.config.WebSocket.ReadTimeout
-	client.writeTimeout = f.config.WebSocket.WriteTimeout
+	client := NewDomainWebSocketClient(f.logger, f.config.WebSocket)
 
 	f.logger.Info("domain", "WebSocket client created with configuration", map[string]interface{}{
 		"max_retries":   f.config.WebSocket.MaxRetries,
@@ -192,14 +185,7 @@ func (f *DomainComponentsFactory) CreateWebSocketClient() domain.WebSocketClient
 
 // CreateSystemAPIClient crea un System API Client configurado
 func (f *DomainComponentsFactory) CreateSystemAPIClient() domain.SystemAPIClient {
-	client := NewDomainSystemAPIClient(f.logger)
-
-	// Aplicar configuración específica
-	client.SetTimeout(f.config.SystemAPIClient.Timeout)
-	client.SetRateLimit(f.config.SystemAPIClient.RateLimitDelay)
-	client.maxRetries = f.config.SystemAPIClient.MaxRetries
-	client.retryDelay = f.config.SystemAPIClient.RetryDelay
-	client.userAgent = f.config.SystemAPIClient.UserAgent
+	client := NewDomainSystemAPIClient(f.logger, f.config.SystemAPIClient)
 
 	f.logger.Info("domain", "System API client created with configuration", map[string]interface{}{
 		"timeout":          f.config.SystemAPIClient.Timeout,
@@ -215,10 +201,7 @@ func (f *DomainComponentsFactory) CreateSystemAPIClient() domain.SystemAPIClient
 
 // CreateWindowManager crea un Window Manager configurado
 func (f *DomainComponentsFactory) CreateWindowManager() domain.WindowManager {
-	manager := NewDomainWindowManager(f.logger)
-
-	// Aplicar configuración específica
-	manager.SetDefaultSize(f.config.WindowManager.DefaultWidth, f.config.WindowManager.DefaultHeight)
+	manager := NewDomainWindowManager(f.logger, f.config.WindowManager)
 
 	f.logger.Info("domain", "Window manager created with configuration", map[string]interface{}{
 		"default_width":  f.config.WindowManager.DefaultWidth,
@@ -231,15 +214,7 @@ func (f *DomainComponentsFactory) CreateWindowManager() domain.WindowManager {
 
 // CreateHideoutAutomation crea un Hideout Automation configurado
 func (f *DomainComponentsFactory) CreateHideoutAutomation(systemAPIClient domain.SystemAPIClient, settingsRepo domain.LiveSearchRepository) domain.HideoutAutomation {
-	automation := NewDomainHideoutAutomation(f.logger, systemAPIClient, settingsRepo)
-
-	// Aplicar configuración específica
-	automation.SetConfiguration(
-		f.config.HideoutAutomation.MaxRetries,
-		f.config.HideoutAutomation.RetryDelay,
-		f.config.HideoutAutomation.ProcessDelay,
-		f.config.HideoutAutomation.MaxQueueSize,
-	)
+	automation := NewDomainHideoutAutomation(f.logger, systemAPIClient, settingsRepo, f.config.HideoutAutomation)
 
 	f.logger.Info("domain", "Hideout automation created with configuration", map[string]interface{}{
 		"max_retries":    f.config.HideoutAutomation.MaxRetries,

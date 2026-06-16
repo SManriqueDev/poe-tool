@@ -33,16 +33,16 @@ type DomainSystemAPIClient struct {
 }
 
 // NewDomainSystemAPIClient crea una nueva instancia del cliente de APIs del sistema
-func NewDomainSystemAPIClient(logger domain.Logger) *DomainSystemAPIClient {
+func NewDomainSystemAPIClient(logger domain.Logger, config SystemAPIClientConfig) *DomainSystemAPIClient {
 	return &DomainSystemAPIClient{
 		logger:         logger,
-		timeout:        30 * time.Second,
-		userAgent:      "PoeTool/1.0",
-		rateLimitDelay: 500 * time.Millisecond, // Conservative rate limiting
-		maxRetries:     3,
-		retryDelay:     2 * time.Second,
+		timeout:        config.Timeout,
+		userAgent:      config.UserAgent,
+		rateLimitDelay: config.RateLimitDelay,
+		maxRetries:     config.MaxRetries,
+		retryDelay:     config.RetryDelay,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: config.Timeout,
 		},
 	}
 }
@@ -287,21 +287,4 @@ func (s *DomainSystemAPIClient) applyRateLimit() error {
 	return nil
 }
 
-// SetTimeout actualiza el timeout del cliente
-func (s *DomainSystemAPIClient) SetTimeout(timeout time.Duration) {
-	s.timeout = timeout
-	s.httpClient.Timeout = timeout
 
-	s.logger.Info("system_api", "HTTP timeout updated", map[string]interface{}{
-		"timeout": timeout,
-	})
-}
-
-// SetRateLimit actualiza el rate limit
-func (s *DomainSystemAPIClient) SetRateLimit(delay time.Duration) {
-	s.rateLimitDelay = delay
-
-	s.logger.Info("system_api", "Rate limit updated", map[string]interface{}{
-		"rate_limit_delay": delay,
-	})
-}
