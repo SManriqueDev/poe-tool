@@ -19,7 +19,6 @@ type App struct {
 
 	settingsService *settings.Service
 	loggingService  *logging.Service
-	lsService       *livesearch.Service
 
 	windowManager     domain.WindowManager
 	hideoutAutomation domain.HideoutAutomation
@@ -29,9 +28,6 @@ type App struct {
 func NewApp() *App {
 	settingsService, _ := settings.NewService("PoeTool")
 	loggingService := logging.NewService(settingsService)
-	lsService := livesearch.NewService(settingsService, loggingService)
-
-	lsService.SetupEventEmitter(loggingService)
 
 	domainTradeLinkRepo := adapters.NewDomainTradeLinkRepository()
 	domainLiveSearchRepo := adapters.NewDomainLiveSearchRepository()
@@ -67,7 +63,6 @@ func NewApp() *App {
 
 		settingsService: settingsService,
 		loggingService:  loggingService,
-		lsService:       lsService,
 
 		windowManager:     domainWindowManager,
 		hideoutAutomation: domainHideoutAutomation,
@@ -81,10 +76,6 @@ func (a *App) Startup() {
 }
 
 func (a *App) SetAppInstance(app *application.App) {
-	livesearch.GetAppInstance = func() *application.App {
-		return app
-	}
-
 	if domainWindowManager, ok := a.windowManager.(*adapters.DomainWindowManager); ok {
 		domainWindowManager.SetApplication(app)
 	}
@@ -92,5 +83,4 @@ func (a *App) SetAppInstance(app *application.App) {
 
 func (a *App) SetupContexts(ctx context.Context) {
 	a.loggingService.SetContext(ctx)
-	a.lsService.SetContext(ctx)
 }
