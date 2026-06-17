@@ -2,7 +2,6 @@ package adapters
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
@@ -27,14 +26,26 @@ func (l *WailsEventListener) OnNewItems(ctx context.Context, searchID string, it
 	// Convertir items del dominio al formato que espera el frontend
 	var frontendItems []map[string]interface{}
 	for _, item := range items {
-		itemBytes, _ := json.Marshal(item.Item)
-		listingBytes, _ := json.Marshal(item.Listing)
+		itemMap := map[string]interface{}{
+			"id":       item.ID,
+			"item":     item.Item,
+			"listing":  item.Listing,
+			"itemName": item.Item.Name,
+		}
 
-		frontendItems = append(frontendItems, map[string]interface{}{
-			"id":      item.ID,
-			"item":    json.RawMessage(itemBytes),
-			"listing": json.RawMessage(listingBytes),
-		})
+		// Fall back to typeLine if name is empty
+		if item.Item.Name == "" {
+			itemMap["itemName"] = item.Item.TypeLine
+		}
+
+		// Extract price info if available (price is optional)
+		if item.Listing.Price != nil {
+			itemMap["priceAmount"] = item.Listing.Price.Amount
+			itemMap["priceCurrency"] = item.Listing.Price.Currency
+			itemMap["priceType"] = item.Listing.Price.Type
+		}
+
+		frontendItems = append(frontendItems, itemMap)
 	}
 
 	app.Event.Emit("livesearch:new-items", map[string]interface{}{

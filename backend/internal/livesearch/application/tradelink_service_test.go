@@ -174,6 +174,44 @@ func TestTradeLinkApplicationService_ListTradeLinks(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
+func TestTradeLinkApplicationService_ListTradeLinks_Empty(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockTradeLinkRepository)
+	mockLogger := new(MockLogger)
+
+	service := application.NewTradeLinkApplicationService(mockRepo, mockLogger)
+
+	mockRepo.On("List", ctx).Return([]domain.TradeLink{}, nil)
+
+	result, err := service.ListTradeLinks(ctx)
+
+	assert.NoError(t, err)
+	assert.Empty(t, result)
+	mockRepo.AssertExpectations(t)
+}
+
+func TestTradeLinkApplicationService_ListTradeLinks_RepositoryError(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockTradeLinkRepository)
+	mockLogger := new(MockLogger)
+
+	service := application.NewTradeLinkApplicationService(mockRepo, mockLogger)
+
+	expectedError := assert.AnError
+	mockRepo.On("List", ctx).Return([]domain.TradeLink{}, expectedError)
+	mockLogger.On("Error", "livesearch", "Failed to list trade links", mock.MatchedBy(func(metadata map[string]interface{}) bool {
+		return metadata["error"] == expectedError.Error()
+	})).Return(nil)
+
+	result, err := service.ListTradeLinks(ctx)
+
+	assert.Error(t, err)
+	assert.Equal(t, expectedError, err)
+	assert.Empty(t, result)
+	mockRepo.AssertExpectations(t)
+	mockLogger.AssertExpectations(t)
+}
+
 func TestTradeLinkApplicationService_UpdateTradeLink(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
@@ -240,6 +278,41 @@ func TestTradeLinkApplicationService_UpdateTradeLink_NotFound(t *testing.T) {
 	mockLogger.AssertExpectations(t)
 }
 
+func TestTradeLinkApplicationService_UpdateTradeLink_RepositoryError(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockTradeLinkRepository)
+	mockLogger := new(MockLogger)
+
+	service := application.NewTradeLinkApplicationService(mockRepo, mockLogger)
+
+	id := 1
+	url := "https://example.com"
+	description := "Description"
+	selected := true
+
+	existingTradeLink := &domain.TradeLink{
+		ID:          id,
+		URL:         "https://original.com",
+		Description: "Original",
+		Selected:    false,
+		CreatedAt:   time.Now(),
+	}
+
+	expectedError := assert.AnError
+	mockRepo.On("GetByID", ctx, id).Return(existingTradeLink, nil)
+	mockRepo.On("Update", ctx, mock.AnythingOfType("*domain.TradeLink")).Return(expectedError)
+	mockLogger.On("Error", "livesearch", "Failed to update trade link", mock.MatchedBy(func(metadata map[string]interface{}) bool {
+		return metadata["id"] == id && metadata["error"] == expectedError.Error()
+	})).Return(nil)
+
+	err := service.UpdateTradeLink(ctx, id, url, description, selected)
+
+	assert.Error(t, err)
+	assert.Equal(t, expectedError, err)
+	mockRepo.AssertExpectations(t)
+	mockLogger.AssertExpectations(t)
+}
+
 func TestTradeLinkApplicationService_DeleteTradeLink(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
@@ -261,6 +334,29 @@ func TestTradeLinkApplicationService_DeleteTradeLink(t *testing.T) {
 
 	// Assert
 	assert.NoError(t, err)
+	mockRepo.AssertExpectations(t)
+	mockLogger.AssertExpectations(t)
+}
+
+func TestTradeLinkApplicationService_DeleteTradeLink_RepositoryError(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := new(MockTradeLinkRepository)
+	mockLogger := new(MockLogger)
+
+	service := application.NewTradeLinkApplicationService(mockRepo, mockLogger)
+
+	id := 1
+	expectedError := assert.AnError
+
+	mockRepo.On("Delete", ctx, id).Return(expectedError)
+	mockLogger.On("Error", "livesearch", "Failed to delete trade link", mock.MatchedBy(func(metadata map[string]interface{}) bool {
+		return metadata["id"] == id && metadata["error"] == expectedError.Error()
+	})).Return(nil)
+
+	err := service.DeleteTradeLink(ctx, id)
+
+	assert.Error(t, err)
+	assert.Equal(t, expectedError, err)
 	mockRepo.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
 }

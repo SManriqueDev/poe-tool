@@ -19,6 +19,27 @@ func NewLoggerAdapter(loggingSvc *logging.Service) *LoggerAdapter {
 
 // Info registra un mensaje informativo
 func (a *LoggerAdapter) Info(module, message string, metadata map[string]interface{}) error {
+	// Detect item-found events and route to LogItemFound for enriched logging
+	if module == "livesearch" && metadata != nil {
+		if itemID, ok := metadata["item_id"].(string); ok && itemID != "" {
+			searchID, _ := metadata["search_id"].(string)
+			itemName, _ := metadata["item_name"].(string)
+
+			var price *logging.Price
+			if pAmount, hasAmt := metadata["price_amount"].(float64); hasAmt {
+				pCurrency, _ := metadata["price_currency"].(string)
+				pType, _ := metadata["price_type"].(string)
+				price = &logging.Price{
+					Amount:   pAmount,
+					Currency: pCurrency,
+					Type:     pType,
+				}
+			}
+
+			return a.loggingSvc.LogItemFound(searchID, itemID, itemName, "", "", price, "")
+		}
+	}
+
 	log.Printf("[%s] INFO: %s %v", module, message, metadata)
 	return a.loggingSvc.Log(logging.LogModuleLiveSearch, logging.LogLevelInfo, message, metadata)
 }

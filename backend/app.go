@@ -28,6 +28,7 @@ type App struct {
 func NewApp() *App {
 	settingsService, _ := settings.NewService("PoeTool")
 	loggingService := logging.NewService(settingsService)
+	loggingService.SetEventEmitter(adapters.NewWailsLogEmitter())
 
 	domainTradeLinkRepo := adapters.NewDomainTradeLinkRepository()
 	domainLiveSearchRepo := adapters.NewDomainLiveSearchRepository()

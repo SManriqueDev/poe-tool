@@ -7,6 +7,7 @@ import (
 
 	"github.com/SManriqueDev/poe-tool/backend/internal/livesearch/domain"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 // DomainWindowManager implementa domain.WindowManager de forma pura
@@ -92,6 +93,13 @@ func (wm *DomainWindowManager) OpenLogsWindow(ctx context.Context) error {
 		wm.logger.Error("window_manager", "Failed to create logs window", nil)
 		return fmt.Errorf("failed to create window")
 	}
+
+	// Register listener to clean up when user closes the window via X
+	window.OnWindowEvent(events.Common.WindowClosing, func(event *application.WindowEvent) {
+		wm.windowsMu.Lock()
+		delete(wm.activeWindows, windowID)
+		wm.windowsMu.Unlock()
+	})
 
 	// Track the window
 	wm.windowsMu.Lock()

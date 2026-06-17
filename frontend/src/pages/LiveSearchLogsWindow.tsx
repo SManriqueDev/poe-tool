@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SimpleLayout from "@/SimpleLayout";
 
 import {
-	cleanupOldLogs,
+	clearLogs as clearAllLogs,
 	getLogEntries,
 	type LogEntry,
 	type LogFilter,
@@ -64,7 +64,7 @@ export default function LiveSearchLogsWindow() {
 
 	const clearLogs = async () => {
 		try {
-			await cleanupOldLogs();
+			await clearAllLogs();
 			await loadLogs(); // Reload after clearing
 		} catch (error) {
 			console.error("Error clearing logs:", error);

@@ -279,30 +279,47 @@ func (s *LiveSearchApplicationService) handleNewItem(ctx context.Context, item d
 	})
 
 	// Extract hideout_token from listing and queue hideout visit if available
-	if listingMap, ok := item.Listing.(map[string]interface{}); ok {
-		if hideoutToken, ok := listingMap["hideout_token"].(string); ok && hideoutToken != "" {
-			// Skip if a hideout visit is already in progress or queued
-			isProcessing, _ := s.hideoutAutomation.IsProcessing(ctx)
-			queueSize, _ := s.hideoutAutomation.GetQueueSize(ctx)
-			if isProcessing || queueSize > 0 {
-				s.logger.Info("livesearch", "Skipping hideout - another visit in progress", map[string]interface{}{
-					"item_id":    item.ID,
-					"processing": isProcessing,
-					"queue_size": queueSize,
-				})
-			} else {
-				s.logger.Info("livesearch", "Hideout token found, queuing visit", map[string]interface{}{
+	if item.Listing.HideoutToken != "" {
+		hideoutToken := item.Listing.HideoutToken
+		// Skip if a hideout visit is already in progress or queued
+		isProcessing, _ := s.hideoutAutomation.IsProcessing(ctx)
+		queueSize, _ := s.hideoutAutomation.GetQueueSize(ctx)
+		if isProcessing || queueSize > 0 {
+			s.logger.Info("livesearch", "Skipping hideout - another visit in progress", map[string]interface{}{
+				"item_id":    item.ID,
+				"processing": isProcessing,
+				"queue_size": queueSize,
+			})
+		} else {
+			s.logger.Info("livesearch", "Hideout token found, queuing visit", map[string]interface{}{
+				"item_id": item.ID,
+			})
+			if err := s.hideoutAutomation.QueueHideoutVisit(ctx, hideoutToken, item.ID); err != nil {
+				s.logger.Error("livesearch", "Failed to queue hideout visit", map[string]interface{}{
 					"item_id": item.ID,
+					"error":   err.Error(),
 				})
-				if err := s.hideoutAutomation.QueueHideoutVisit(ctx, hideoutToken, item.ID); err != nil {
-					s.logger.Error("livesearch", "Failed to queue hideout visit", map[string]interface{}{
-						"item_id": item.ID,
-						"error":   err.Error(),
-					})
-				}
 			}
 		}
 	}
+
+	// Build log metadata with item info
+	itemName := item.Item.Name
+	if itemName == "" {
+		itemName = item.Item.TypeLine
+	}
+	logMeta := map[string]interface{}{
+		"item_id":    item.ID,
+		"search_id":  item.SearchID,
+		"item_name":  itemName,
+	}
+	if item.Listing.Price != nil {
+		logMeta["price_amount"] = item.Listing.Price.Amount
+		logMeta["price_currency"] = item.Listing.Price.Currency
+		logMeta["price_type"] = item.Listing.Price.Type
+	}
+
+	s.logger.Info("livesearch", "New item found: "+itemName, logMeta)
 
 	// Emitir evento de nuevo item
 	items := []domain.ItemResult{item}

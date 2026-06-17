@@ -70,12 +70,42 @@ type HideoutSettings struct {
 	Enabled bool `json:"enabled"`
 }
 
+// PoEPrice represents item pricing information from the PoE trade API
+type PoEPrice struct {
+	Amount   float64 `json:"amount"`
+	Currency string  `json:"currency"`
+	Type     string  `json:"type"`
+}
+
+// PoEAccount represents seller account information
+type PoEAccount struct {
+	Name string `json:"name"`
+}
+
+// PoEItem represents an item from the PoE trade API response
+type PoEItem struct {
+	Name       string `json:"name"`
+	TypeLine   string `json:"typeLine"`
+	Icon       string `json:"icon,omitempty"`
+	Identified bool   `json:"identified,omitempty"`
+	Ilvl       int    `json:"ilvl,omitempty"`
+}
+
+// PoEListing represents a listing from the PoE trade API response
+type PoEListing struct {
+	Price        *PoEPrice   `json:"price,omitempty"`
+	Account      PoEAccount  `json:"account"`
+	HideoutToken string      `json:"hideout_token,omitempty"`
+	Whisper      string      `json:"whisper,omitempty"`
+	Indexed      string      `json:"indexed,omitempty"`
+}
+
 // ItemResult representa un resultado de item encontrado
 type ItemResult struct {
-	ID       string      `json:"id"`
-	Item     interface{} `json:"item"`
-	Listing  interface{} `json:"listing"`
-	SearchID string      `json:"search_id"`
+	ID       string     `json:"id"`
+	Item     PoEItem    `json:"item"`
+	Listing  PoEListing `json:"listing"`
+	SearchID string     `json:"search_id"`
 }
 
 // WindowInfo representa información de una ventana del sistema

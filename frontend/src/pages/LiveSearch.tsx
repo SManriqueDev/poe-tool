@@ -32,15 +32,20 @@ import {
 } from "@/services/liveSearchService";
 
 // Type definitions for the application
-interface ItemResult {
+interface EnrichedItemResult {
 	id: string;
 	item: Record<string, unknown>;
 	listing: Record<string, unknown>;
+	itemName?: string;
+	itemTypeLine?: string;
+	priceAmount?: number;
+	priceCurrency?: string;
+	priceType?: string;
 }
 
 interface NewItemsFoundEventData {
 	searchId: string;
-	items: ItemResult[];
+	items: EnrichedItemResult[];
 }
 
 interface WailsEvent<T = unknown> {
@@ -157,21 +162,26 @@ export default function LiveSearch() {
 			"livesearch:new-items",
 			(ev: WailsEvent<NewItemsFoundEventData>) => {
 				const data = ev.data[0] || ev.data;
+				const first = data.items?.[0];
 
-				// Show toast notification
-				toast(
-					`Found ${data.items?.length || 0} new item${(data.items?.length || 0) > 1 ? "s" : ""}!`,
-					{
-						description: `Search ID: ${data.searchId}`,
-						action: {
-							label: "View",
-							onClick: () => {
-								// Here you could open a modal or navigate to item details
-								console.log("View items clicked", data.items);
-							},
+				// Determine title: item name, fall back to typeLine, then generic
+				const title = first?.itemName || first?.itemTypeLine || "New item";
+
+				// Build description with price if available
+				let description = `Search: ${data.searchId}`;
+				if (first?.priceAmount != null && first?.priceCurrency) {
+					description = `${first.priceAmount} ${first.priceCurrency} — ${description}`;
+				}
+
+				toast(title, {
+					description,
+					action: {
+						label: "View",
+						onClick: () => {
+							console.log("View items clicked", data.items);
 						},
 					},
-				);
+				});
 			},
 		);
 
