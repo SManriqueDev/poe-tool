@@ -5,7 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import Layout from "@/Layout";
 import LiveSearch from "@/pages/LiveSearch";
-import LiveSearchLogsWindow from "@/pages/LiveSearchLogsWindow";
+import Logs from "@/pages/Logs";
 import Settings from "@/pages/Settings";
 
 function App() {
@@ -13,7 +13,7 @@ function App() {
 		<div id={useId()}>
 			<Routes>
 				{/* Rutas sin layout para ventanas independientes */}
-				<Route path="/livesearch-logs" element={<LiveSearchLogsWindow />} />
+				<Route path="/logs" element={<Logs />} />
 
 				{/* Rutas principales con layout */}
 				<Route

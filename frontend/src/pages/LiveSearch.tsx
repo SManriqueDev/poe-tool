@@ -23,7 +23,6 @@ import {
 	getAllLinkStatuses,
 	getGoToHideout,
 	listTradeLinks,
-	openLogsWindow,
 	setGoToHideout,
 	startLiveSearch,
 	stopLiveSearch,
@@ -93,16 +92,6 @@ export default function LiveSearch() {
 	const [editDescription, setEditDescription] = useState("");
 	const [isLiveSearchRunning, setIsLiveSearchRunning] = useState(false);
 	const [goToHideoutEnabled, setGoToHideoutEnabled] = useState(false);
-
-	// Open logs in new window
-	const handleOpenLogsWindow = async () => {
-		try {
-			await openLogsWindow();
-		} catch (error) {
-			console.error("Failed to open logs window:", error);
-			toast.error("Failed to open logs window");
-		}
-	};
 
 	useEffect(() => {
 		// Load trade links and their current statuses
@@ -294,12 +283,7 @@ export default function LiveSearch() {
 		<div className="max-w-3xl w-full mx-auto mt-12 space-y-4">
 			<Card>
 				<CardHeader>
-					<div className="flex justify-between items-center">
-						<CardTitle>Live Search</CardTitle>
-						<Button variant="outline" size="sm" onClick={handleOpenLogsWindow}>
-							Open Logs Window
-						</Button>
-					</div>
+					<CardTitle>Live Search</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<form className="flex gap-4 mb-6" onSubmit={handleAdd}>

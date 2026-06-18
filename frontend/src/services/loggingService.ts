@@ -247,6 +247,14 @@ export async function cleanupOldLogs(): Promise<void> {
 	}
 }
 
+export async function openLogsWindow(): Promise<void> {
+	try {
+		await Handler.OpenLogsWindow();
+	} catch (error) {
+		console.error("Failed to open logs window:", error);
+	}
+}
+
 // Helper functions
 export function formatTimestamp(timestamp: string): string {
 	try {
