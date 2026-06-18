@@ -67,8 +67,8 @@ func (s *Service) Log(module LogModule, level LogLevel, message string, metadata
 		}
 	}
 
-	// Emit real-time update if enabled and for LiveSearch module
-	if s.config.RealTimeUpdates && s.ctx != nil && s.eventEmitter != nil && module == LogModuleLiveSearch {
+	// Emit real-time update if enabled
+	if s.config.RealTimeUpdates && s.ctx != nil && s.eventEmitter != nil {
 		// Create the log entry and get it back with the ID for event emission
 		createdEntry, err := s.repo.CreateLogEntryAndReturn(entry)
 		if err != nil {
