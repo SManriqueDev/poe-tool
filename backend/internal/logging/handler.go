@@ -6,7 +6,8 @@ import (
 )
 
 type Handler struct {
-	svc *Service
+	svc           *Service
+	windowManager WindowManager
 }
 
 func NewHandler(svc *Service) *Handler {
@@ -15,8 +16,20 @@ func NewHandler(svc *Service) *Handler {
 	}
 }
 
+func (h *Handler) SetWindowManager(wm WindowManager) {
+	h.windowManager = wm
+}
+
 func (h *Handler) SetContext(ctx context.Context) {
 	h.svc.SetContext(ctx)
+}
+
+// OpenLogsWindow opens the dedicated logs window via the window manager
+func (h *Handler) OpenLogsWindow() error {
+	if h.windowManager != nil {
+		return h.windowManager.OpenLogsWindow(context.Background())
+	}
+	return nil
 }
 
 // GetLogEntries retrieves log entries with filtering and pagination

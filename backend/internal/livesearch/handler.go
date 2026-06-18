@@ -13,20 +13,17 @@ type Handler struct {
 	hideoutAppSvc    *application.HideoutApplicationService
 	liveSearchAppSvc *application.LiveSearchApplicationService
 
-	logger        domain.Logger
-	windowManager domain.WindowManager
+	logger domain.Logger
 }
 
 // NewHandler crea un handler con ambos: servicios nuevos y legacy
 // Los servicios de aplicación se inyectan desde app.go para evitar dependencias circulares
-func NewHandler(tradeLinkAppSvc *application.TradeLinkApplicationService, hideoutAppSvc *application.HideoutApplicationService, liveSearchAppSvc *application.LiveSearchApplicationService, logger domain.Logger,
-	windowManager domain.WindowManager) *Handler {
+func NewHandler(tradeLinkAppSvc *application.TradeLinkApplicationService, hideoutAppSvc *application.HideoutApplicationService, liveSearchAppSvc *application.LiveSearchApplicationService, logger domain.Logger) *Handler {
 	return &Handler{
 		tradeLinkAppSvc:  tradeLinkAppSvc,
 		hideoutAppSvc:    hideoutAppSvc,
 		liveSearchAppSvc: liveSearchAppSvc,
 		logger:           logger,
-		windowManager:    windowManager,
 	}
 }
 
@@ -155,9 +152,4 @@ func (h *Handler) IsHideoutProcessing() bool {
 		return false
 	}
 	return processing
-}
-
-func (h *Handler) OpenLogsWindow() error {
-	ctx := context.Background()
-	return h.windowManager.OpenLogsWindow(ctx)
 }

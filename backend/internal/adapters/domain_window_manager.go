@@ -77,10 +77,10 @@ func (wm *DomainWindowManager) OpenLogsWindow(ctx context.Context) error {
 
 	// Create new window using Wails v3 API
 	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:            "Live Search Logs - Poe Tool",
+		Title:            "Logs - Poe Tool",
 		Width:            1000,
 		Height:           700,
-		URL:              "/#/livesearch-logs", // Route to logs page
+			URL:              "/#/logs", // Route to logs page
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 0,
@@ -200,7 +200,7 @@ func (wm *DomainWindowManager) GetActiveWindows(ctx context.Context) ([]domain.W
 
 		// Override for logs window
 		if windowID == "logs-window" {
-			windowInfo.Title = "Live Search Logs - Poe Tool"
+			windowInfo.Title = "Logs - Poe Tool"
 			windowInfo.Size.Width = 1000
 			windowInfo.Size.Height = 700
 		}

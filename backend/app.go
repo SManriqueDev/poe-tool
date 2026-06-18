@@ -57,10 +57,13 @@ func NewApp() *App {
 		domainHideoutAutomation,
 	)
 
+	loggingHandler := logging.NewHandler(loggingService)
+	loggingHandler.SetWindowManager(domainWindowManager)
+
 	return &App{
 		SettingsHandler:   settings.NewHandler(settingsService),
-		LoggingHandler:    logging.NewHandler(loggingService),
-		LiveSearchHandler: livesearch.NewHandler(tradeLinkAppSvc, hideoutAppSvc, liveSearchAppSvc, loggerAdapter, domainWindowManager),
+		LoggingHandler:    loggingHandler,
+		LiveSearchHandler: livesearch.NewHandler(tradeLinkAppSvc, hideoutAppSvc, liveSearchAppSvc, loggerAdapter),
 
 		settingsService: settingsService,
 		loggingService:  loggingService,
